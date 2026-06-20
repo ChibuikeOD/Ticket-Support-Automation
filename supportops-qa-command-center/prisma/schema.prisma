@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Ticket {
+  id                    String           @id @default(cuid())
+  externalId            String           @unique
+  customerName          String?
+  customerEmail         String?
+  productPurchased      String?
+  ticketType            String?
+  ticketSubject         String?
+  ticketDescription     String
+  ticketStatus          String?
+  resolution            String?
+  priority              String?
+  channel               String?
+  firstResponseTime     String?
+  timeToResolution      String?
+  customerSatisfaction  String?
+  status                String           @default("seeded")
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  analyses              AiAnalysis[]
+  reviews               ReviewDecision[]
+
+  @@index([status])
+}
+
+model AutomationRun {
+  id              String       @id @default(cuid())
+  name            String
+  model           String
+  promptVersion   String
+  status          String       @default("created")
+  processedCount  Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  analyses        AiAnalysis[]
+  reportExports   ReportExport[]
+}
+
+model AiAnalysis {
+  id                    String           @id @default(cuid())
+  ticketId              String
+  automationRunId       String
+  issueCategory         String
+  customerIntent        String
+  summary               String
+  sentiment             String
+  riskLevel             String
+  draftResponse         String
+  confidence            Float
+  recommendedAction     String
+  finalAction           String
+  escalationReason      String
+  policyChecksJson      String
+  guardrailReasonsJson  String
+  rawModelJson          String
+  createdAt             DateTime         @default(now())
+  ticket                Ticket           @relation(fields: [ticketId], references: [id])
+  automationRun         AutomationRun    @relation(fields: [automationRunId], references: [id])
+  reviews               ReviewDecision[]
+
+  @@index([ticketId])
+  @@index([automationRunId])
+}
+
+model ReviewDecision {
+  id               String     @id @default(cuid())
+  ticketId         String
+  aiAnalysisId     String
+  action           String
+  editedResponse   String?
+  reviewerNotes    String?
+  createdAt        DateTime   @default(now())
+  ticket           Ticket     @relation(fields: [ticketId], references: [id])
+  aiAnalysis       AiAnalysis @relation(fields: [aiAnalysisId], references: [id])
+
+  @@index([ticketId])
+  @@index([aiAnalysisId])
+}
+
+model PolicyRule {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String
+  ruleText    String
+  severity    String
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ReportExport {
+  id            String         @id @default(cuid())
+  runId         String?
+  format        String
+  content       String
+  createdAt     DateTime       @default(now())
+  automationRun AutomationRun? @relation(fields: [runId], references: [id])
+}
