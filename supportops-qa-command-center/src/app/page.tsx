@@ -26,6 +26,11 @@ export default async function OverviewPage() {
           Monitor automation coverage, review quality, and model confidence.
         </p>
       </div>
+      {!process.env.DEEPSEEK_API_KEY ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          DeepSeek API key is not configured. Add DEEPSEEK_API_KEY to .env before running live automation.
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label="Tickets" value={String(metrics.totalTickets)} />
         <MetricCard label="Auto-resolution" value={`${metrics.autoResolutionRate}%`} />
