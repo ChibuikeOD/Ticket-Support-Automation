@@ -1,3 +1,4 @@
+import { AnalysisActions } from "@/components/analysis-actions";
 import { StatusBadge } from "@/components/status-badge";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
@@ -9,7 +10,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     include: {
       analyses: {
         orderBy: { createdAt: "desc" },
-        take: 1,
+        take: 5,
       },
       reviews: {
         orderBy: { createdAt: "desc" },
@@ -35,6 +36,15 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           <StatusBadge status={ticket.status} />
         </div>
       </div>
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-base font-semibold">Analysis controls</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Run this ticket through DeepSeek again, or delete analysis history for a clean demo reset.
+        </p>
+        <div className="mt-4">
+          <AnalysisActions ticketId={ticket.id} hasAnalysis={Boolean(latest)} />
+        </div>
+      </section>
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-base font-semibold">Customer ticket</h2>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -115,6 +125,21 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           No AI analysis yet. Run a batch from the backlog.
         </section>
       )}
+      {ticket.analyses.length > 1 ? (
+        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-base font-semibold">Analysis history</h2>
+          <div className="mt-3 space-y-3">
+            {ticket.analyses.map((analysis) => (
+              <div key={analysis.id} className="rounded-md bg-slate-50 p-3 text-sm">
+                <div className="font-medium">{analysis.issueCategory}</div>
+                <div className="mt-1 text-slate-600">
+                  {Math.round(analysis.confidence * 100)}% confidence · final action {analysis.finalAction}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

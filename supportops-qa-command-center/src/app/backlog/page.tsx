@@ -1,3 +1,4 @@
+import { GrabRandomTicketButton } from "@/components/grab-random-ticket-button";
 import { RunBatchButton } from "@/components/run-batch-button";
 import { TicketTable } from "@/components/ticket-table";
 import { prisma } from "@/lib/db";
@@ -29,7 +30,10 @@ export default async function BacklogPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Ticket Backlog</h1>
           <p className="mt-1 text-sm text-slate-600">Seeded support tickets ready for AI analysis.</p>
         </div>
-        <RunBatchButton ticketIds={runnableIds} />
+        <div className="flex flex-col gap-3 sm:items-end">
+          <GrabRandomTicketButton />
+          <RunBatchButton ticketIds={runnableIds} />
+        </div>
       </div>
       {tickets.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
