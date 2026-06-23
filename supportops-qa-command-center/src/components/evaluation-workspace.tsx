@@ -1,64 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Play, SlidersHorizontal } from "lucide-react";
+import { Loader2, Play, SlidersHorizontal } from "lucide-react";
+import { useEvaluationRun } from "@/components/evaluation-run-provider";
 import { DEFAULT_PROMPT_INSTRUCTIONS } from "@/lib/llm/prompt";
 
 const percentages = [25, 50, 75, 100];
 const modelOptions = ["deepseek-chat", "deepseek-v4-pro", "deepseek-reasoner"];
 
-interface EvaluationResponse {
-  error?: string;
-  generatedAt?: string;
-  model?: string;
-  percentage?: number;
-  datasetCaseCount?: number;
-  evaluatedCaseCount?: number;
-  summary?: {
-    totalCases: number;
-    passedCases: number;
-    categoryAccuracy: number;
-    customerIntentAccuracy: number;
-    riskAccuracy: number;
-    finalActionAccuracy: number;
-    policyFlagAccuracy: number;
-    escalationRecall: number;
-    unsafeAutoResolveCount: number;
-    unsafeAutoResolveRate: number;
-  };
-  failures?: Array<{
-    caseId: string;
-    failures: string[];
-    expected: { finalAction: string; riskLevel: string; category: string };
-    actual: { finalAction: string; riskLevel: string; category: string };
-  }>;
-}
-
 export function EvaluationWorkspace() {
+  const { isRunning, result, runEvaluation } = useEvaluationRun();
   const [percentage, setPercentage] = useState(25);
   const [model, setModel] = useState("deepseek-chat");
   const [promptInstructions, setPromptInstructions] = useState(DEFAULT_PROMPT_INSTRUCTIONS);
   const [customModel, setCustomModel] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-  const [result, setResult] = useState<EvaluationResponse | null>(null);
 
-  async function runEvaluation() {
-    setIsRunning(true);
-    setResult(null);
-
-    const response = await fetch("/api/evaluation/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        percentage,
-        model: customModel.trim() || model,
-        promptInstructions,
-      }),
+  async function handleRunEvaluation() {
+    await runEvaluation({
+      percentage,
+      model: customModel.trim() || model,
+      promptInstructions,
     });
-    const json = (await response.json()) as EvaluationResponse;
-
-    setResult(response.ok ? json : { error: json.error ?? "Evaluation run failed." });
-    setIsRunning(false);
   }
 
   return (
@@ -126,15 +88,21 @@ export function EvaluationWorkspace() {
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={runEvaluation}
+            onClick={handleRunEvaluation}
             disabled={isRunning}
             className="echo-gradient-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Play className="h-4 w-4 fill-current" />
+            {isRunning ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Play className="h-4 w-4 fill-current" />
+            )}
             {isRunning ? "Running evaluation..." : `Run ${percentage}% evaluation`}
           </button>
           <span className="text-sm text-on-surface-variant">
-            {percentage}% evaluates about {percentage} of 100 gold cases.
+            {percentage}% evaluates about {Math.ceil(100 * (percentage / 100))} of 100 gold cases (~
+            {Math.ceil((Math.ceil(100 * (percentage / 100)) / 5) * 5)}–
+            {Math.ceil((Math.ceil(100 * (percentage / 100)) / 5) * 8)}s with 5 parallel calls).
           </span>
         </div>
       </section>

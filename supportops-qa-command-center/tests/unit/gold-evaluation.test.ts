@@ -120,6 +120,39 @@ describe("gold evaluation", () => {
     expect(report.results[0].score.passed).toBe(true);
   });
 
+  it("processes cases with bounded concurrency while preserving order", async () => {
+    const cases = loadGoldCasesFromCsv(goldCsv);
+    let active = 0;
+    let maxActive = 0;
+
+    const report = await runGoldEvaluation({
+      cases,
+      policies: ["Financial-sensitive tickets require human review."],
+      confidenceThreshold: 0.82,
+      concurrency: 2,
+      analyzeTicket: async (ticket) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        active -= 1;
+
+        return ticket.id === "GOLD-00001"
+          ? paymentAnalysis
+          : {
+              ...paymentAnalysis,
+              issueCategory: "Security Concern",
+              customerIntent: "Receive two-factor authentication code",
+              riskLevel: "high" as const,
+              recommendedAction: "escalate" as const,
+            };
+      },
+      applyDecision: applyGuardrails,
+    });
+
+    expect(maxActive).toBeLessThanOrEqual(2);
+    expect(report.results.map((result) => result.case.id)).toEqual(cases.map((goldCase) => goldCase.id));
+  });
+
   it("builds a markdown report with summary metrics and failure examples", async () => {
     const cases = loadGoldCasesFromCsv(goldCsv);
     const report = await runGoldEvaluation({

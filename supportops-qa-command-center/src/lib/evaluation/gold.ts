@@ -261,6 +261,7 @@ interface RunGoldEvaluationOptions {
   cases: GoldCase[];
   policies: string[];
   confidenceThreshold: number;
+  concurrency?: number;
   analyzeTicket(ticket: GoldCase["ticket"], policies: string[]): Promise<AiAnalysisResult>;
   applyDecision(
     analysis: AiAnalysisResult,
@@ -268,10 +269,35 @@ interface RunGoldEvaluationOptions {
   ): GuardrailDecision;
 }
 
-export async function runGoldEvaluation(options: RunGoldEvaluationOptions): Promise<GoldEvaluationReport> {
-  const results = [];
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
 
-  for (const goldCase of options.cases) {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(items[index], index);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+
+  return results;
+}
+
+export async function runGoldEvaluation(options: RunGoldEvaluationOptions): Promise<GoldEvaluationReport> {
+  const concurrency = Math.max(1, options.concurrency ?? 1);
+
+  const results = await mapWithConcurrency(options.cases, concurrency, async (goldCase) => {
     const analysis = await options.analyzeTicket(goldCase.ticket, options.policies);
     const decision = options.applyDecision(analysis, {
       confidenceThreshold: options.confidenceThreshold,
@@ -282,12 +308,12 @@ export async function runGoldEvaluation(options: RunGoldEvaluationOptions): Prom
       guardrailReasons: decision.reasons,
     };
 
-    results.push({
+    return {
       case: goldCase,
       actual,
       score: scoreGoldCase(goldCase, actual),
-    });
-  }
+    };
+  });
 
   return {
     summary: summarizeGoldEvaluation(results.map((result) => result.score)),

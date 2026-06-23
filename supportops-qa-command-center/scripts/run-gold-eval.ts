@@ -51,6 +51,7 @@ async function main() {
     cases,
     policies: defaultPolicyTexts(),
     confidenceThreshold,
+    concurrency: Number(process.env.GOLD_EVAL_CONCURRENCY ?? "5") || 5,
     applyDecision: applyGuardrails,
     analyzeTicket: (ticket, policies) =>
       analyzeTicketWithDeepSeek({

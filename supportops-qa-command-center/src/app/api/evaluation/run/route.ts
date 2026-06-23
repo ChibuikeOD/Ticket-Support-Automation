@@ -8,6 +8,13 @@ import { analyzeTicketWithDeepSeek } from "@/lib/llm/deepseek";
 import { DEFAULT_PROMPT_INSTRUCTIONS } from "@/lib/llm/prompt";
 import { defaultPolicyTexts } from "@/lib/policies/defaults";
 
+export const maxDuration = 300;
+
+function goldEvalConcurrency(): number {
+  const parsed = Number(process.env.GOLD_EVAL_CONCURRENCY ?? "5");
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 5;
+}
+
 interface EvaluationRunRequest {
   percentage?: number;
   model?: string;
@@ -48,6 +55,7 @@ export async function POST(request: Request) {
       cases,
       policies: defaultPolicyTexts(),
       confidenceThreshold: Number(process.env.AUTOMATION_CONFIDENCE_THRESHOLD ?? "0.82"),
+      concurrency: goldEvalConcurrency(),
       applyDecision: applyGuardrails,
       analyzeTicket: (ticket, policies) =>
         analyzeTicketWithDeepSeek({
