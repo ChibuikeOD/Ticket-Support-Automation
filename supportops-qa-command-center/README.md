@@ -15,15 +15,35 @@ The project demonstrates practical AI operations:
 
 ## First Run
 
+The app uses **Neon Postgres** (via Vercel) for local and production database access.
+
 ```bash
 npm install
 cp .env.example .env
-npx prisma migrate dev
+vercel link
+```
+
+Add your Neon connection string to `.env.local` (not committed):
+
+1. Open Vercel → **echo-ai** → **Storage** → **echo-ai-db**
+2. Copy the **pooled** `DATABASE_URL` (or `POSTGRES_PRISMA_URL`)
+3. Paste into `.env.local`:
+
+```bash
+DATABASE_URL="postgresql://..."
+```
+
+Then sync the schema and start the app:
+
+```bash
+npm run db:push
 npm run db:seed
 npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+Production on [echo-ai-support.vercel.app](https://echo-ai-support.vercel.app) uses the same Neon database via Vercel integration env vars.
 
 ## Datasets
 

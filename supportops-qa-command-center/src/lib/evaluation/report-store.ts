@@ -111,13 +111,12 @@ export function buildLatestGoldReport(options: {
   };
 }
 
-export async function saveLatestGoldReport(report: LatestGoldReport, reportsDir?: string) {
-  const dir = reportsDir ?? resolveReportsDir();
-  const content = JSON.stringify(report, null, 2);
+function isFilesystemPersistenceError(error: unknown) {
+  const code = (error as NodeJS.ErrnoException).code;
+  return code === "EROFS" || code === "EACCES" || code === "ENOENT";
+}
 
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, "latest-gold-eval.json"), content);
-
+async function persistLatestGoldReportToDatabase(content: string): Promise<boolean> {
   try {
     await prisma.reportExport.deleteMany({ where: { format: LATEST_REPORT_FORMAT } });
     await prisma.reportExport.create({
@@ -126,8 +125,35 @@ export async function saveLatestGoldReport(report: LatestGoldReport, reportsDir?
         content,
       },
     });
+    return true;
   } catch {
-    // Database may be unavailable in some environments.
+    // Database may be unavailable in local-only workflows.
+    return false;
+  }
+}
+
+async function persistLatestGoldReportToFilesystem(dir: string, content: string): Promise<boolean> {
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, "latest-gold-eval.json"), content);
+    return true;
+  } catch (error) {
+    if (isFilesystemPersistenceError(error)) return false;
+    throw error;
+  }
+}
+
+export async function saveLatestGoldReport(report: LatestGoldReport, reportsDir?: string) {
+  const dir = reportsDir ?? resolveReportsDir();
+  const content = JSON.stringify(report, null, 2);
+
+  const [savedToDatabase, savedToFilesystem] = await Promise.all([
+    persistLatestGoldReportToDatabase(content),
+    persistLatestGoldReportToFilesystem(dir, content),
+  ]);
+
+  if (!savedToDatabase && !savedToFilesystem) {
+    throw new Error("Failed to persist latest gold evaluation report");
   }
 }
 
@@ -137,7 +163,7 @@ export async function loadLatestGoldReport(reportsDir?: string): Promise<LatestG
   try {
     return JSON.parse(await readFile(path.join(dir, "latest-gold-eval.json"), "utf8")) as LatestGoldReport;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    if (!isFilesystemPersistenceError(error)) throw error;
   }
 
   try {

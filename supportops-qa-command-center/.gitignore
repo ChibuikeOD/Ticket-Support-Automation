@@ -36,7 +36,7 @@ yarn-error.log*
 .env*
 !.env.example
 
-# local prisma sqlite databases
+# legacy local sqlite files (project now uses Postgres)
 prisma/*.db
 prisma/*.db-journal
 
