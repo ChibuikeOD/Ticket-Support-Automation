@@ -43,7 +43,7 @@ export function AnalysisActions({
         type="button"
         onClick={runAnalysis}
         disabled={isRunning || isDeleting}
-        className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+        className="echo-gradient-button rounded-xl px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-45"
       >
         {isRunning ? "Running..." : hasAnalysis ? "Rerun analysis" : "Run analysis"}
       </button>
@@ -53,7 +53,7 @@ export function AnalysisActions({
             type="button"
             onClick={() => deleteAnalyses("latest")}
             disabled={isRunning || isDeleting}
-            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-950 disabled:cursor-not-allowed disabled:text-slate-400"
+            className="echo-ghost-button rounded-xl px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-45"
           >
             Delete latest analysis
           </button>
@@ -61,13 +61,13 @@ export function AnalysisActions({
             type="button"
             onClick={() => deleteAnalyses("all")}
             disabled={isRunning || isDeleting}
-            className="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 disabled:cursor-not-allowed disabled:text-red-300"
+            className="rounded-xl border border-error/30 bg-error/10 px-5 py-3 text-sm font-bold text-error transition-colors hover:bg-error/15 disabled:cursor-not-allowed disabled:opacity-45"
           >
             Delete all analyses
           </button>
         </>
       ) : null}
-      {message ? <span className="text-sm text-slate-600">{message}</span> : null}
+      {message ? <span className="text-sm text-on-surface-variant">{message}</span> : null}
     </div>
   );
 }

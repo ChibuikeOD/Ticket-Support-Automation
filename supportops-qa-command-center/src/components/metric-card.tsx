@@ -8,10 +8,11 @@ export function MetricCard({
   helper?: string;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="text-sm font-medium text-slate-500">{label}</div>
-      <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{value}</div>
-      {helper ? <div className="mt-1 text-sm text-slate-500">{helper}</div> : null}
+    <div className="glass-panel echo-glow group relative overflow-hidden rounded-2xl p-6">
+      <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+      <div className="echo-label text-outline">{label}</div>
+      <div className="relative mt-2 text-4xl font-bold tracking-tight text-primary">{value}</div>
+      {helper ? <div className="relative mt-3 text-sm text-on-surface-variant">{helper}</div> : null}
     </div>
   );
 }

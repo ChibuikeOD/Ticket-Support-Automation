@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "eval:gold": "tsx scripts/run-gold-eval.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

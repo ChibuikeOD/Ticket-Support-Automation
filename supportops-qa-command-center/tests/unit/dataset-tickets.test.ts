@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { mapDatasetTicketRow, selectRandomUnimportedTicket } from "@/lib/dataset/tickets";
+import {
+  datasetCsvPath,
+  mapDatasetTicketRow,
+  selectRandomOpenTicket,
+} from "@/lib/dataset/tickets";
 
 describe("dataset ticket helpers", () => {
-  it("maps Kaggle CSV rows into ticket create data", () => {
+  it("defaults to the external 200k customer support dataset", () => {
+    expect(datasetCsvPath("C:\\repo\\supportops-qa-command-center")).toBe(
+      "C:\\repo\\Datasets\\customer_support_tickets_200k.csv",
+    );
+  });
+
+  it("maps customer support CSV rows into ticket data", () => {
     const ticket = mapDatasetTicketRow(
       {
         "Ticket ID": "1001",
@@ -29,23 +39,22 @@ describe("dataset ticket helpers", () => {
     expect(ticket.data.status).toBe("seeded");
   });
 
-  it("selects only tickets that have not already been imported", () => {
-    const selected = selectRandomUnimportedTicket(
+  it("selects one open ticket for a sample run", () => {
+    const selected = selectRandomOpenTicket(
       [
-        { externalId: "1001", data: { status: "seeded" } },
-        { externalId: "1002", data: { status: "seeded" } },
+        { externalId: "1001", data: { status: "seeded", ticketStatus: "Closed" } },
+        { externalId: "1002", data: { status: "seeded", ticketStatus: "Open" } },
+        { externalId: "1003", data: { status: "seeded", ticketStatus: "Pending Customer" } },
       ],
-      new Set(["1001"]),
       () => 0,
     );
 
     expect(selected?.externalId).toBe("1002");
   });
 
-  it("returns null when every dataset ticket is already imported", () => {
-    const selected = selectRandomUnimportedTicket(
-      [{ externalId: "1001", data: { status: "seeded" } }],
-      new Set(["1001"]),
+  it("returns null when no open sample tickets exist", () => {
+    const selected = selectRandomOpenTicket(
+      [{ externalId: "1001", data: { status: "seeded", ticketStatus: "Closed" } }],
       () => 0,
     );
 

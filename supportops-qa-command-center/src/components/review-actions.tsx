@@ -31,41 +31,41 @@ export function ReviewActions({
       <textarea
         value={editedResponse}
         onChange={(event) => setEditedResponse(event.target.value)}
-        className="min-h-32 w-full rounded-md border border-slate-300 p-3 text-sm"
+        className="echo-input min-h-32 w-full rounded-xl p-4 text-sm"
       />
       <input
         value={reviewerNotes}
         onChange={(event) => setReviewerNotes(event.target.value)}
         placeholder="Reviewer notes"
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        className="echo-input w-full rounded-xl px-4 py-3 text-sm"
       />
       <div className="flex flex-wrap gap-2">
         <button
-          className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
+          className="rounded-xl border border-emerald-400/30 bg-emerald-400/15 px-4 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-400/20"
           onClick={() => submit("approve")}
         >
           Approve
         </button>
         <button
-          className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white"
+          className="echo-gradient-button rounded-xl px-4 py-2 text-sm font-bold"
           onClick={() => submit("edit_approve")}
         >
           Edit & Approve
         </button>
         <button
-          className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white"
+          className="rounded-xl border border-error/30 bg-error/10 px-4 py-2 text-sm font-bold text-error hover:bg-error/15"
           onClick={() => submit("reject")}
         >
           Reject
         </button>
         <button
-          className="rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white"
+          className="echo-ghost-button rounded-xl px-4 py-2 text-sm font-bold"
           onClick={() => submit("escalate")}
         >
           Escalate
         </button>
       </div>
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {message ? <p className="text-sm text-on-surface-variant">{message}</p> : null}
     </div>
   );
 }

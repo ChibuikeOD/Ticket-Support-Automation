@@ -1,31 +1,19 @@
 import fs from "node:fs";
-import path from "node:path";
-import Papa from "papaparse";
 import { describe, expect, it } from "vitest";
+import { datasetCsvPath, readDatasetTickets, selectRandomOpenTicket } from "@/lib/dataset/tickets";
 
-type CsvTicket = Record<string, string | undefined>;
-
-describe("sample support ticket seed data", () => {
-  it("contains five seedable tickets with required fields", () => {
-    const samplePath = path.join(
-      process.cwd(),
-      "data/kaggle/customer_support_tickets.sample.csv",
-    );
+describe("sample support ticket data", () => {
+  it("uses the external 200k dataset with open tickets", () => {
+    const samplePath = datasetCsvPath();
 
     expect(fs.existsSync(samplePath)).toBe(true);
 
-    const csv = fs.readFileSync(samplePath, "utf8");
-    const parsed = Papa.parse<CsvTicket>(csv, {
-      header: true,
-      skipEmptyLines: true,
-    });
+    const dataset = readDatasetTickets();
+    const openTicket = selectRandomOpenTicket(dataset.tickets, () => 0);
 
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.data).toHaveLength(5);
-
-    for (const record of parsed.data) {
-      expect(record["Ticket ID"]?.trim()).toBeTruthy();
-      expect(record["Ticket Description"]?.trim()).toBeTruthy();
-    }
-  });
+    expect(dataset.tickets.length).toBeGreaterThan(0);
+    expect(openTicket?.data.ticketStatus).toBe("Open");
+    expect(openTicket?.externalId).toBeTruthy();
+    expect(openTicket?.data.ticketDescription).toBeTruthy();
+  }, 20000);
 });

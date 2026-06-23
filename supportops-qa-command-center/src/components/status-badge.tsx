@@ -1,17 +1,21 @@
 const styles: Record<string, string> = {
-  seeded: "bg-slate-100 text-slate-700",
-  processing: "bg-blue-100 text-blue-700",
-  auto_resolved: "bg-emerald-100 text-emerald-700",
-  human_review: "bg-amber-100 text-amber-800",
-  escalated: "bg-red-100 text-red-700",
-  review_approved: "bg-emerald-100 text-emerald-700",
-  review_edited: "bg-indigo-100 text-indigo-700",
-  review_rejected: "bg-red-100 text-red-700",
+  seeded: "border-outline-variant/30 bg-surface-container-highest/60 text-on-surface-variant",
+  processing: "border-secondary/30 bg-secondary/10 text-secondary",
+  auto_resolved: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+  human_review: "border-primary/30 bg-primary/10 text-primary",
+  escalated: "border-error/30 bg-error/10 text-error",
+  review_approved: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+  review_edited: "border-primary-container/30 bg-primary-container/10 text-primary",
+  review_rejected: "border-error/30 bg-error/10 text-error",
 };
 
 export function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${styles[status] ?? styles.seeded}`}>
+    <span
+      className={`echo-label inline-flex rounded-full border px-3 py-1 text-[10px] ${
+        styles[status] ?? styles.seeded
+      }`}
+    >
       {status.replaceAll("_", " ")}
     </span>
   );

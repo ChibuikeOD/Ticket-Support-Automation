@@ -31,49 +31,55 @@ function value(row: CsvTicket, key: string): string | null {
   return raw && raw.length > 0 ? raw : null;
 }
 
-export function datasetCsvPath(cwd = process.cwd()) {
-  const fullPath = path.join(cwd, "data/kaggle/customer_support_tickets.csv");
-  const samplePath = path.join(cwd, "data/kaggle/customer_support_tickets.sample.csv");
+function firstValue(row: CsvTicket, keys: string[]): string | null {
+  for (const key of keys) {
+    const found = value(row, key);
+    if (found) return found;
+  }
 
-  return {
-    csvPath: fs.existsSync(fullPath) ? fullPath : samplePath,
-    isFullDataset: fs.existsSync(fullPath),
-  };
+  return null;
+}
+
+export function datasetCsvPath(cwd = process.cwd()) {
+  return process.env.SAMPLE_DATASET_PATH
+    ? path.resolve(cwd, process.env.SAMPLE_DATASET_PATH)
+    : path.resolve(cwd, "..", "Datasets", "customer_support_tickets_200k.csv");
 }
 
 export function mapDatasetTicketRow(row: CsvTicket, rowNumber: number): DatasetTicket {
-  const externalId = value(row, "Ticket ID");
+  const externalId = firstValue(row, ["ticket_id", "Ticket ID"]);
 
   if (!externalId) {
     throw new Error(`Missing Ticket ID in CSV row ${rowNumber}.`);
   }
 
   const ticketDescription =
-    value(row, "Ticket Description") ?? value(row, "Ticket Subject") ?? "No ticket description provided.";
+    firstValue(row, ["issue_description", "Ticket Description", "Ticket Subject"]) ??
+    "No ticket description provided.";
 
   return {
     externalId,
     data: {
-      customerName: value(row, "Customer Name"),
-      customerEmail: value(row, "Customer Email"),
-      productPurchased: value(row, "Product Purchased"),
-      ticketType: value(row, "Ticket Type"),
-      ticketSubject: value(row, "Ticket Subject"),
+      customerName: firstValue(row, ["customer_name", "Customer Name"]),
+      customerEmail: firstValue(row, ["customer_email", "Customer Email"]),
+      productPurchased: firstValue(row, ["product", "Product Purchased"]),
+      ticketType: firstValue(row, ["category", "Ticket Type"]),
+      ticketSubject: firstValue(row, ["category", "Ticket Subject"]),
       ticketDescription,
-      ticketStatus: value(row, "Ticket Status"),
-      resolution: value(row, "Resolution"),
-      priority: value(row, "Ticket Priority"),
-      channel: value(row, "Ticket Channel"),
-      firstResponseTime: value(row, "First Response Time"),
-      timeToResolution: value(row, "Time to Resolution"),
-      customerSatisfaction: value(row, "Customer Satisfaction Rating"),
+      ticketStatus: firstValue(row, ["status", "Ticket Status"]),
+      resolution: firstValue(row, ["resolution_notes", "Resolution"]),
+      priority: firstValue(row, ["priority", "Ticket Priority"]),
+      channel: firstValue(row, ["channel", "Ticket Channel"]),
+      firstResponseTime: firstValue(row, ["first_response_time_hours", "First Response Time"]),
+      timeToResolution: firstValue(row, ["resolution_time_hours", "Time to Resolution"]),
+      customerSatisfaction: firstValue(row, ["customer_satisfaction_score", "Customer Satisfaction Rating"]),
       status: "seeded",
     },
   };
 }
 
 export function readDatasetTickets(cwd = process.cwd()) {
-  const { csvPath, isFullDataset } = datasetCsvPath(cwd);
+  const csvPath = datasetCsvPath(cwd);
   const csv = fs.readFileSync(csvPath, "utf8");
   const parsed = Papa.parse<CsvTicket>(csv, {
     header: true,
@@ -86,17 +92,12 @@ export function readDatasetTickets(cwd = process.cwd()) {
 
   return {
     csvPath,
-    isFullDataset,
     tickets: parsed.data.map((row, index) => mapDatasetTicketRow(row, index + 2)),
   };
 }
 
-export function selectRandomUnimportedTicket(
-  tickets: DatasetTicket[],
-  importedExternalIds: Set<string>,
-  random = Math.random,
-) {
-  const candidates = tickets.filter((ticket) => !importedExternalIds.has(ticket.externalId));
+export function selectRandomOpenTicket(tickets: DatasetTicket[], random = Math.random) {
+  const candidates = tickets.filter((ticket) => ticket.data.ticketStatus?.toLowerCase() === "open");
 
   if (candidates.length === 0) {
     return null;

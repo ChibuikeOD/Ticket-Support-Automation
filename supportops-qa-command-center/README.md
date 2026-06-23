@@ -1,6 +1,6 @@
 # SupportOps QA Command Center
 
-An AI support automation and QA command center. The app processes a seeded customer support ticket dataset, drafts and routes support responses with DeepSeek, applies deterministic safety guardrails, and gives human reviewers a queue for approve/edit/reject/escalate decisions.
+An AI support evaluation console. The app shows gold-dataset evaluation results, then lets you run one open support ticket at a time through DeepSeek and deterministic guardrails.
 
 ## Why This Exists
 
@@ -8,10 +8,9 @@ The project demonstrates practical AI operations:
 
 - structured LLM outputs
 - conservative automation
-- human-in-the-loop review
 - policy/SOP guardrails
-- evaluation runs
-- dashboard quality metrics
+- gold-dataset evaluation metrics
+- one-ticket sample runs
 - exportable QA reports
 
 ## First Run
@@ -26,23 +25,54 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Dataset
+## Datasets
 
-The app is designed around the Kaggle Customer Support Ticket Dataset by `suraj520`:
+The dashboard focuses on the curated gold evaluation dataset:
 
-https://www.kaggle.com/datasets/suraj520/customer-support-ticket-dataset
+```text
+../Datasets/gold_eval_clean_closed_sat5.csv
+```
 
-Before publishing the full raw CSV, verify Kaggle license and redistribution terms. This repository can ship with a small sample and an import path for local use.
+The sample-run panel pulls one open ticket at a time from:
+
+```text
+../Datasets/customer_support_tickets_200k.csv
+```
+
+The app no longer uses `data/kaggle`.
+
+## Gold Evaluation
+
+The project includes a gold-dataset evaluator for measuring model and prompt quality against curated expected labels. By default, it reads:
+
+```text
+../Datasets/gold_eval_clean_closed_sat5.csv
+```
+
+Run a gold evaluation:
+
+```bash
+npm run eval:gold
+```
+
+Useful environment variables:
+
+```text
+GOLD_DATASET_PATH=../Datasets/gold_eval_clean_closed_sat5.csv
+SAMPLE_DATASET_PATH=../Datasets/customer_support_tickets_200k.csv
+GOLD_EVAL_LIMIT=10
+GOLD_EVAL_PROMPT_VERSION=v1
+```
+
+The evaluator runs each gold ticket through the normal LLM analysis flow, applies deterministic guardrails, and writes JSON/Markdown reports to `evaluation-reports/`. It tracks category accuracy, intent accuracy, risk accuracy, final-action accuracy, policy-flag accuracy, escalation recall, and unsafe auto-resolve rate.
 
 ## Demo Script
 
-1. Open the overview dashboard.
-2. Go to Backlog and run an automation batch.
-3. Review the split between auto-resolved, human-review, and escalated tickets.
-4. Open the Review Queue and approve, edit, reject, and escalate examples.
-5. Return to the dashboard to show metric changes.
-6. Open Evaluation Runs to compare prompt/model batches.
-7. Export the Markdown QA report from Reports.
+1. Run `npm run eval:gold` to generate or refresh the gold evaluation report.
+2. Open the overview dashboard and review the gold evaluation metrics.
+3. Use Sample Run to process one open ticket from the 200k CSV.
+4. Inspect the LLM category, intent, risk, confidence, draft response, and final guardrail action.
+5. Export the Markdown QA report from Reports.
 
 ## Safety Notes
 

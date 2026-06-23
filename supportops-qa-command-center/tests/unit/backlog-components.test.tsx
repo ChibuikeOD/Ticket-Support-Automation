@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { RunBatchButton } from "@/components/run-batch-button";
+import { SampleRunner } from "@/components/sample-runner";
 import { TicketTable } from "@/components/ticket-table";
 
 describe("backlog components", () => {
@@ -27,17 +27,11 @@ describe("backlog components", () => {
     expect(screen.getByText("seeded")).toBeTruthy();
   });
 
-  it("disables batch runs when no tickets are selected", () => {
-    render(<RunBatchButton ticketIds={[]} />);
+  it("renders a one-ticket sample runner", () => {
+    render(<SampleRunner />);
 
-    const button = screen.getByRole("button", { name: "Run batch (0)" }) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-  });
-
-  it("shows the selected batch count", () => {
-    render(<RunBatchButton ticketIds={["ticket-1", "ticket-2"]} />);
-
-    const button = screen.getByRole("button", { name: "Run batch (2)" }) as HTMLButtonElement;
+    expect(screen.getByText("Sample Run")).toBeTruthy();
+    const button = screen.getByRole("button", { name: "Run one open ticket" }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
   });
 });

@@ -12,7 +12,9 @@ export default async function RunsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Evaluation Runs</h1>
-        <p className="mt-1 text-sm text-slate-600">Compare prompt and model batches over time.</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Legacy stored automation runs. Gold evaluation results now appear on the dashboard.
+        </p>
       </div>
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200">
