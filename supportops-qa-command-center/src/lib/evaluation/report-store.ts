@@ -46,6 +46,56 @@ export interface LatestGoldReport {
 }
 
 const LATEST_REPORT_FORMAT = "latest-gold-eval";
+const GOLD_SCORE_DIMENSIONS = 3;
+
+function percent(numerator: number, denominator: number): number {
+  if (denominator === 0) return 0;
+  return Math.round((numerator / denominator) * 100);
+}
+
+export function normalizeGoldEvaluationSummary(
+  summary: Partial<GoldEvaluationSummary>,
+  cases: EvaluationCaseResult[],
+): GoldEvaluationSummary {
+  const totalCases = summary.totalCases ?? cases.length;
+  const categoryPoints =
+    summary.categoryPoints ?? cases.filter((entry) => entry.matches?.category).length;
+  const intentPoints =
+    summary.intentPoints ?? cases.filter((entry) => entry.matches?.customerIntent).length;
+  const actionPoints =
+    summary.actionPoints ?? cases.filter((entry) => entry.matches?.finalAction).length;
+  const matchedPoints =
+    summary.matchedPoints ??
+    cases.reduce((sum, entry) => sum + (entry.pointsEarned ?? 0), 0);
+  const totalPoints =
+    summary.totalPoints ??
+    (cases.length > 0
+      ? cases.reduce((sum, entry) => sum + (entry.pointsPossible ?? GOLD_SCORE_DIMENSIONS), 0)
+      : totalCases * GOLD_SCORE_DIMENSIONS);
+  const passedCases = summary.passedCases ?? cases.filter((entry) => entry.passed).length;
+
+  return {
+    totalCases,
+    totalPoints,
+    matchedPoints,
+    scorePercent: summary.scorePercent ?? percent(matchedPoints, totalPoints),
+    categoryPoints,
+    intentPoints,
+    actionPoints,
+    passedCases,
+    categoryAccuracy: summary.categoryAccuracy ?? percent(categoryPoints, totalCases),
+    customerIntentAccuracy:
+      summary.customerIntentAccuracy ?? percent(intentPoints, totalCases),
+    finalActionAccuracy: summary.finalActionAccuracy ?? percent(actionPoints, totalCases),
+  };
+}
+
+function normalizeLatestGoldReport(report: LatestGoldReport): LatestGoldReport {
+  return {
+    ...report,
+    summary: normalizeGoldEvaluationSummary(report.summary, report.cases ?? []),
+  };
+}
 
 export function resolveReportsDir(cwd = process.cwd()) {
   return process.env.EVALUATION_REPORTS_DIR
@@ -157,15 +207,20 @@ export async function saveLatestGoldReport(report: LatestGoldReport, reportsDir?
   }
 }
 
-export async function loadLatestGoldReport(reportsDir?: string): Promise<LatestGoldReport | null> {
-  const dir = reportsDir ?? resolveReportsDir();
-
+async function loadLatestGoldReportFromFilesystem(
+  dir: string,
+): Promise<LatestGoldReport | null> {
   try {
-    return JSON.parse(await readFile(path.join(dir, "latest-gold-eval.json"), "utf8")) as LatestGoldReport;
+    return JSON.parse(
+      await readFile(path.join(dir, "latest-gold-eval.json"), "utf8"),
+    ) as LatestGoldReport;
   } catch (error) {
     if (!isFilesystemPersistenceError(error)) throw error;
+    return null;
   }
+}
 
+async function loadLatestGoldReportFromDatabase(): Promise<LatestGoldReport | null> {
   try {
     const record = await prisma.reportExport.findFirst({
       where: { format: LATEST_REPORT_FORMAT },
@@ -176,4 +231,20 @@ export async function loadLatestGoldReport(reportsDir?: string): Promise<LatestG
   } catch {
     return null;
   }
+}
+
+export async function loadLatestGoldReport(reportsDir?: string): Promise<LatestGoldReport | null> {
+  const dir = reportsDir ?? resolveReportsDir();
+  const loaders = process.env.VERCEL
+    ? [() => loadLatestGoldReportFromDatabase(), () => loadLatestGoldReportFromFilesystem(dir)]
+    : [() => loadLatestGoldReportFromFilesystem(dir), () => loadLatestGoldReportFromDatabase()];
+
+  for (const loader of loaders) {
+    const report = await loader();
+    if (report) {
+      return normalizeLatestGoldReport(report);
+    }
+  }
+
+  return null;
 }

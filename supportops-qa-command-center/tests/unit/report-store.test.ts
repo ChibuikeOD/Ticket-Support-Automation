@@ -8,6 +8,7 @@ import {
   buildLatestGoldReport,
   loadLatestGoldReport,
   mapGoldResultToCaseResult,
+  normalizeGoldEvaluationSummary,
   saveLatestGoldReport,
 } from "@/lib/evaluation/report-store";
 
@@ -121,5 +122,52 @@ describe("evaluation report store", () => {
 
     expect(loaded?.model).toBe("deepseek-chat");
     expect(loaded?.cases).toHaveLength(1);
+  });
+
+  it("fills missing point-based summary fields from persisted case results", () => {
+    const summary = normalizeGoldEvaluationSummary(
+      {
+        totalCases: 1,
+        passedCases: 0,
+        categoryAccuracy: 100,
+        customerIntentAccuracy: 0,
+        finalActionAccuracy: 0,
+      },
+      [
+        {
+          caseId: "GOLD-1",
+          passed: false,
+          pointsEarned: 1,
+          pointsPossible: 3,
+          failures: ["customer intent"],
+          matches: { category: true, customerIntent: false, finalAction: false },
+          ticket: {
+            description: "Login fails",
+            product: "Portal",
+            priority: "High",
+            channel: "Email",
+          },
+          expected: {
+            category: "Account Access",
+            customerIntent: "Log in",
+            finalAction: "escalate",
+          },
+          actual: {
+            category: "Account Access",
+            customerIntent: "Reset password",
+            finalAction: "human_review",
+            confidence: 0.9,
+            guardrailReasons: [],
+          },
+        },
+      ],
+    );
+
+    expect(summary.matchedPoints).toBe(1);
+    expect(summary.totalPoints).toBe(3);
+    expect(summary.scorePercent).toBe(33);
+    expect(summary.categoryPoints).toBe(1);
+    expect(summary.intentPoints).toBe(0);
+    expect(summary.actionPoints).toBe(0);
   });
 });

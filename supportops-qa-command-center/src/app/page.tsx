@@ -3,6 +3,8 @@ import { SampleRunner } from "@/components/sample-runner";
 import { loadGoldDashboardSummary } from "@/lib/evaluation/dashboard";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default async function OverviewPage() {
   const gold = await loadGoldDashboardSummary();
   const latest = gold.latestReport;
