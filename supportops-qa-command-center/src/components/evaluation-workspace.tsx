@@ -3,25 +3,28 @@
 import { useState } from "react";
 import { Loader2, Play, SlidersHorizontal } from "lucide-react";
 import { useEvaluationRun } from "@/components/evaluation-run-provider";
+import { EVALUATION_BATCH_SIZES, DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
 import { DEFAULT_PROMPT_INSTRUCTIONS } from "@/lib/llm/prompt";
 
-const percentages = [25, 50, 75, 100];
 const modelOptions = ["deepseek-chat", "deepseek-v4-pro", "deepseek-reasoner"];
 
 export function EvaluationWorkspace() {
   const { isRunning, result, runEvaluation } = useEvaluationRun();
-  const [percentage, setPercentage] = useState(25);
+  const [batchSize, setBatchSize] = useState<number>(5);
   const [model, setModel] = useState("deepseek-chat");
   const [promptInstructions, setPromptInstructions] = useState(DEFAULT_PROMPT_INSTRUCTIONS);
   const [customModel, setCustomModel] = useState("");
 
   async function handleRunEvaluation() {
     await runEvaluation({
-      percentage,
+      batchSize,
       model: customModel.trim() || model,
       promptInstructions,
     });
   }
+
+  const estimatedSecondsLow = Math.ceil((batchSize / DEFAULT_GOLD_EVAL_CONCURRENCY) * 5);
+  const estimatedSecondsHigh = Math.ceil((batchSize / DEFAULT_GOLD_EVAL_CONCURRENCY) * 12);
 
   return (
     <div className="space-y-6">
@@ -32,23 +35,24 @@ export function EvaluationWorkspace() {
         </div>
         <div className="mt-5 grid gap-5 lg:grid-cols-[0.8fr_0.8fr_1.4fr]">
           <div>
-            <div className="echo-label text-outline">Dataset Portion</div>
+            <div className="echo-label text-outline">Batch Size</div>
             <div className="mt-3 grid grid-cols-4 gap-2">
-              {percentages.map((value) => (
+              {EVALUATION_BATCH_SIZES.map((value) => (
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setPercentage(value)}
+                  onClick={() => setBatchSize(value)}
                   className={`rounded-xl px-3 py-2 text-sm font-bold transition ${
-                    percentage === value
+                    batchSize === value
                       ? "echo-gradient-button"
                       : "border border-outline-variant/50 bg-surface-container-high/60 text-on-surface-variant"
                   }`}
                 >
-                  {value}%
+                  {value}
                 </button>
               ))}
             </div>
+            <p className="mt-2 text-xs text-on-surface-variant">Random rows from the 100-case gold dataset.</p>
           </div>
           <div>
             <label className="echo-label text-outline" htmlFor="eval-model">
@@ -97,12 +101,11 @@ export function EvaluationWorkspace() {
             ) : (
               <Play className="h-4 w-4 fill-current" />
             )}
-            {isRunning ? "Running evaluation..." : `Run ${percentage}% evaluation`}
+            {isRunning ? "Running evaluation..." : `Run ${batchSize}-case evaluation`}
           </button>
           <span className="text-sm text-on-surface-variant">
-            {percentage}% evaluates about {Math.ceil(100 * (percentage / 100))} of 100 gold cases (~
-            {Math.ceil((Math.ceil(100 * (percentage / 100)) / 5) * 5)}–
-            {Math.ceil((Math.ceil(100 * (percentage / 100)) / 5) * 8)}s with 5 parallel calls).
+            {batchSize} random gold cases (~{estimatedSecondsLow}–{estimatedSecondsHigh}s with {DEFAULT_GOLD_EVAL_CONCURRENCY}{" "}
+            parallel calls).
           </span>
         </div>
       </section>
@@ -119,11 +122,12 @@ export function EvaluationWorkspace() {
             <div>
               <h2 className="text-2xl font-bold">Evaluation Results</h2>
               <p className="mt-1 text-sm text-on-surface-variant">
-                {result.model} evaluated {result.evaluatedCaseCount}/{result.datasetCaseCount} gold cases.
+                {result.model} evaluated {result.evaluatedCaseCount}/{result.datasetCaseCount} gold cases (random
+                sample).
               </p>
             </div>
             <span className="echo-label rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary">
-              {result.percentage}% run
+              {result.batchSize ?? batchSize} cases
             </span>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -152,8 +156,13 @@ export function EvaluationWorkspace() {
                     <div className="font-bold text-primary">{failure.caseId}</div>
                     <div className="mt-1 text-on-surface-variant">Failures: {failure.failures.join(", ")}</div>
                     <div className="mt-2 grid gap-2 md:grid-cols-2">
-                      <div>Expected: {failure.expected.finalAction}, {failure.expected.riskLevel}, {failure.expected.category}</div>
-                      <div>Actual: {failure.actual.finalAction}, {failure.actual.riskLevel}, {failure.actual.category}</div>
+                      <div>
+                        Expected: {failure.expected.finalAction}, {failure.expected.riskLevel},{" "}
+                        {failure.expected.category}
+                      </div>
+                      <div>
+                        Actual: {failure.actual.finalAction}, {failure.actual.riskLevel}, {failure.actual.category}
+                      </div>
                     </div>
                   </div>
                 ))

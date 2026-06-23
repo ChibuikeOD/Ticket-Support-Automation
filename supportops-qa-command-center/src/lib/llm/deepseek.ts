@@ -50,10 +50,24 @@ export async function analyzeTicketWithDeepSeek(options: AnalyzeTicketOptions) {
   });
 
   if (!response.ok) {
-    throw new Error(`DeepSeek request failed with status ${response.status}`);
+    const errorText = await response.text();
+    const detail = errorText.trim().slice(0, 240);
+    throw new Error(
+      detail
+        ? `DeepSeek request failed (${response.status}): ${detail}`
+        : `DeepSeek request failed with status ${response.status}`,
+    );
   }
 
-  const json = (await response.json()) as DeepSeekResponse;
+  const responseText = await response.text();
+  let json: DeepSeekResponse;
+  try {
+    json = JSON.parse(responseText) as DeepSeekResponse;
+  } catch {
+    throw new Error(
+      `DeepSeek returned non-JSON (${response.status}): ${responseText.trim().slice(0, 240)}`,
+    );
+  }
   const content = json.choices?.[0]?.message?.content;
 
   if (!content) {

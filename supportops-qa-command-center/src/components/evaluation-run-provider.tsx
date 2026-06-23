@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { Loader2 } from "lucide-react";
+import { DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
 
 export interface EvaluationRunSummary {
   totalCases: number;
@@ -28,7 +29,8 @@ export interface EvaluationRunResult {
   error?: string;
   generatedAt?: string;
   model?: string;
-  percentage?: number;
+  batchSize?: number;
+  sampledCaseIds?: string[];
   datasetCaseCount?: number;
   evaluatedCaseCount?: number;
   summary?: EvaluationRunSummary;
@@ -41,7 +43,7 @@ export interface EvaluationRunResult {
 }
 
 export interface EvaluationRunParams {
-  percentage: number;
+  batchSize: number;
   model: string;
   promptInstructions: string;
 }
@@ -60,8 +62,25 @@ interface EvaluationRunContextValue extends EvaluationRunState {
 
 const EvaluationRunContext = createContext<EvaluationRunContextValue | null>(null);
 
-function estimatedCaseCount(percentage: number): number {
-  return Math.ceil(100 * (percentage / 100));
+async function parseEvaluationResponse(response: Response): Promise<EvaluationRunResult> {
+  const text = await response.text();
+
+  try {
+    return JSON.parse(text) as EvaluationRunResult;
+  } catch {
+    const preview = text.trim().slice(0, 200);
+    if (response.status === 504 || response.status === 408) {
+      throw new Error(
+        "Evaluation timed out on the server. Try a smaller batch (5 cases) or a faster model like deepseek-chat.",
+      );
+    }
+
+    throw new Error(
+      preview.startsWith("An error")
+        ? `Server error (${response.status}): ${preview}`
+        : `Server returned a non-JSON response (${response.status}): ${preview || "empty body"}`,
+    );
+  }
 }
 
 function EvaluationRunOverlay({
@@ -71,7 +90,7 @@ function EvaluationRunOverlay({
   params: EvaluationRunParams;
   startedAt: number;
 }) {
-  const caseCount = estimatedCaseCount(params.percentage);
+  const caseCount = params.batchSize;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
@@ -83,7 +102,7 @@ function EvaluationRunOverlay({
     return () => window.clearInterval(interval);
   }, [startedAt]);
 
-  const batchCount = Math.ceil(caseCount / 5);
+  const batchCount = Math.ceil(caseCount / DEFAULT_GOLD_EVAL_CONCURRENCY);
 
   return (
     <div
@@ -96,13 +115,13 @@ function EvaluationRunOverlay({
         <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" aria-hidden="true" />
         <h2 className="mt-4 text-xl font-bold text-foreground">Running gold evaluation</h2>
         <p className="mt-2 text-sm text-on-surface-variant">
-          {params.model} · {params.percentage}% · ~{caseCount} DeepSeek calls
+          {params.model} · {caseCount} random gold cases · {DEFAULT_GOLD_EVAL_CONCURRENCY} parallel calls
         </p>
         <p className="mt-3 text-sm text-on-surface-variant">
           Each ticket is analyzed by the LLM. Runs continue in the background if you switch tabs.
         </p>
         <p className="echo-label mt-4 text-xs text-outline">
-          Elapsed {elapsedSeconds}s · ~{batchCount} parallel batches (5 at a time)
+          Elapsed {elapsedSeconds}s · ~{batchCount} parallel batches ({DEFAULT_GOLD_EVAL_CONCURRENCY} at a time)
         </p>
       </div>
     </div>
@@ -131,7 +150,7 @@ export function EvaluationRunProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
       });
-      const json = (await response.json()) as EvaluationRunResult;
+      const json = await parseEvaluationResponse(response);
       const result = response.ok ? json : { error: json.error ?? "Evaluation run failed." };
 
       setState({

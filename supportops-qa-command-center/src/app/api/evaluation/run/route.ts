@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { applyGuardrails } from "@/lib/automation/guardrails";
 import { defaultGoldDatasetPath } from "@/lib/evaluation/dashboard";
 import { loadGoldCasesFromCsv, runGoldEvaluation } from "@/lib/evaluation/gold";
-import { selectGoldCasesByPercentage } from "@/lib/evaluation/workspace";
+import { selectRandomGoldCases, DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
 import { analyzeTicketWithDeepSeek } from "@/lib/llm/deepseek";
 import { DEFAULT_PROMPT_INSTRUCTIONS } from "@/lib/llm/prompt";
 import { defaultPolicyTexts } from "@/lib/policies/defaults";
@@ -11,11 +11,13 @@ import { defaultPolicyTexts } from "@/lib/policies/defaults";
 export const maxDuration = 300;
 
 function goldEvalConcurrency(): number {
-  const parsed = Number(process.env.GOLD_EVAL_CONCURRENCY ?? "5");
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 5;
+  const parsed = Number(process.env.GOLD_EVAL_CONCURRENCY ?? String(DEFAULT_GOLD_EVAL_CONCURRENCY));
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_GOLD_EVAL_CONCURRENCY;
 }
 
 interface EvaluationRunRequest {
+  batchSize?: number;
+  /** @deprecated use batchSize */
   percentage?: number;
   model?: string;
   promptInstructions?: string;
@@ -43,12 +45,12 @@ async function readGoldCsv(datasetPath: string) {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as EvaluationRunRequest;
-    const percentage = body.percentage ?? 25;
+    const batchSize = body.batchSize ?? body.percentage ?? 5;
     const model = body.model?.trim() || process.env.DEEPSEEK_MODEL || "deepseek-chat";
     const promptInstructions = body.promptInstructions?.trim() || DEFAULT_PROMPT_INSTRUCTIONS;
     const datasetPath = defaultGoldDatasetPath();
     const allCases = loadGoldCasesFromCsv(await readGoldCsv(datasetPath));
-    const cases = selectGoldCasesByPercentage(allCases, percentage);
+    const cases = selectRandomGoldCases(allCases, batchSize);
     const generatedAt = new Date();
 
     const report = await runGoldEvaluation({
@@ -71,7 +73,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       generatedAt: generatedAt.toISOString(),
       model,
-      percentage,
+      batchSize,
+      sampledCaseIds: cases.map((goldCase) => goldCase.id),
       promptInstructions,
       datasetPath,
       datasetCaseCount: allCases.length,

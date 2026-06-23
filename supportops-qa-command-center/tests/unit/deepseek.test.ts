@@ -24,32 +24,33 @@ describe("analyzeTicketWithDeepSeek", () => {
   it("parses valid DeepSeek JSON responses", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        choices: [
-          {
-            message: {
-              content: JSON.stringify({
-                issueCategory: "Shipping",
-                customerIntent: "Check delivery status",
-                summary: "Customer asks for shipment status.",
-                sentiment: "neutral",
-                riskLevel: "low",
-                draftResponse: "Thanks for reaching out. I can help check the shipment status.",
-                confidence: 0.9,
-                recommendedAction: "auto_resolve",
-                escalationReason: "",
-                policyChecks: [
-                  {
-                    policy: "Shipping status can be automated when no refund is requested.",
-                    status: "pass",
-                    reason: "No refund requested.",
-                  },
-                ],
-              }),
+      text: async () =>
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  issueCategory: "Shipping",
+                  customerIntent: "Check delivery status",
+                  summary: "Customer asks for shipment status.",
+                  sentiment: "neutral",
+                  riskLevel: "low",
+                  draftResponse: "Thanks for reaching out. I can help check the shipment status.",
+                  confidence: 0.9,
+                  recommendedAction: "auto_resolve",
+                  escalationReason: "",
+                  policyChecks: [
+                    {
+                      policy: "Shipping status can be automated when no refund is requested.",
+                      status: "pass",
+                      reason: "No refund requested.",
+                    },
+                  ],
+                }),
+              },
             },
-          },
-        ],
-      }),
+          ],
+        }),
     });
 
     vi.stubGlobal("fetch", fetchMock);
@@ -76,26 +77,27 @@ describe("analyzeTicketWithDeepSeek", () => {
   it("uses custom prompt instructions when provided", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        choices: [
-          {
-            message: {
-              content: JSON.stringify({
-                issueCategory: "Shipping",
-                customerIntent: "Check delivery status",
-                summary: "Customer asks for shipment status.",
-                sentiment: "neutral",
-                riskLevel: "low",
-                draftResponse: "Thanks for reaching out.",
-                confidence: 0.9,
-                recommendedAction: "auto_resolve",
-                escalationReason: "",
-                policyChecks: [],
-              }),
+      text: async () =>
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  issueCategory: "Shipping",
+                  customerIntent: "Check delivery status",
+                  summary: "Customer asks for shipment status.",
+                  sentiment: "neutral",
+                  riskLevel: "low",
+                  draftResponse: "Thanks for reaching out.",
+                  confidence: 0.9,
+                  recommendedAction: "auto_resolve",
+                  escalationReason: "",
+                  policyChecks: [],
+                }),
+              },
             },
-          },
-        ],
-      }),
+          ],
+        }),
     });
 
     vi.stubGlobal("fetch", fetchMock);

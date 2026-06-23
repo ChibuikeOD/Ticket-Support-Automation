@@ -7,6 +7,7 @@ import {
   loadGoldCasesFromCsv,
   runGoldEvaluation,
 } from "@/lib/evaluation/gold";
+import { DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
 import { defaultPolicyTexts } from "@/lib/policies/defaults";
 
 async function loadDotEnv() {
@@ -51,7 +52,9 @@ async function main() {
     cases,
     policies: defaultPolicyTexts(),
     confidenceThreshold,
-    concurrency: Number(process.env.GOLD_EVAL_CONCURRENCY ?? "5") || 5,
+    concurrency:
+      Number(process.env.GOLD_EVAL_CONCURRENCY ?? String(DEFAULT_GOLD_EVAL_CONCURRENCY)) ||
+      DEFAULT_GOLD_EVAL_CONCURRENCY,
     applyDecision: applyGuardrails,
     analyzeTicket: (ticket, policies) =>
       analyzeTicketWithDeepSeek({

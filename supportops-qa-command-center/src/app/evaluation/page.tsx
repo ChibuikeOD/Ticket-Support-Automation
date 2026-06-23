@@ -6,7 +6,7 @@ export default function EvaluationPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-5xl">Evaluation</h1>
         <p className="mt-3 max-w-3xl text-lg text-on-surface-variant">
-          Run the gold dataset at 25%, 50%, 75%, or 100%, choose a model, and edit the prompt used for the run.
+          Run a random sample of 5, 10, 15, or 20 gold cases, choose a model, and edit the prompt used for the run.
         </p>
       </div>
       {!process.env.DEEPSEEK_API_KEY ? (
