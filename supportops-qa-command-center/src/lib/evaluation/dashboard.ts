@@ -21,6 +21,30 @@ export function defaultGoldDatasetPath(cwd = process.cwd()) {
     : path.resolve(cwd, "..", "Datasets", "gold_eval_clean_closed_sat5.csv");
 }
 
+function goldDatasetUrl() {
+  return (
+    process.env.GOLD_DATASET_URL ??
+    "https://raw.githubusercontent.com/ChibuikeOD/Ticket-Support-Automation/main/Datasets/gold_eval_clean_closed_sat5.csv"
+  );
+}
+
+async function readGoldDatasetText(datasetPath: string) {
+  try {
+    return await readFile(datasetPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+
+  const url = goldDatasetUrl();
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Gold dataset request failed with status ${response.status}`);
+  }
+
+  return response.text();
+}
+
 async function readLatestReport(reportsDir: string): Promise<LatestGoldReport | null> {
   try {
     return JSON.parse(await readFile(path.join(reportsDir, "latest-gold-eval.json"), "utf8")) as LatestGoldReport;
@@ -33,7 +57,7 @@ async function readLatestReport(reportsDir: string): Promise<LatestGoldReport | 
 export async function loadGoldDashboardSummary(options: LoadGoldDashboardSummaryOptions = {}) {
   const datasetPath = options.datasetPath ?? defaultGoldDatasetPath();
   const reportsDir = options.reportsDir ?? path.resolve(process.cwd(), "evaluation-reports");
-  const cases = loadGoldCasesFromCsv(await readFile(datasetPath, "utf8"));
+  const cases = loadGoldCasesFromCsv(await readGoldDatasetText(datasetPath));
 
   return {
     dataset: {

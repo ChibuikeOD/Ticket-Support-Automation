@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { applyGuardrails } from "@/lib/automation/guardrails";
-import { readDatasetTickets, selectRandomOpenTicket } from "@/lib/dataset/tickets";
+import { readDatasetTicketsAsync, selectRandomOpenTicket } from "@/lib/dataset/tickets";
 import { prisma } from "@/lib/db";
 import { analyzeTicketWithDeepSeek } from "@/lib/llm/deepseek";
 
 export async function POST() {
   try {
-    const dataset = readDatasetTickets();
+    const dataset = await readDatasetTicketsAsync();
     const ticket = selectRandomOpenTicket(dataset.tickets);
 
     if (!ticket) {

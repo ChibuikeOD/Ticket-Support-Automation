@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Papa from "papaparse";
 
@@ -46,6 +47,13 @@ export function datasetCsvPath(cwd = process.cwd()) {
     : path.resolve(cwd, "..", "Datasets", "customer_support_tickets_200k.csv");
 }
 
+function sampleDatasetUrl() {
+  return (
+    process.env.SAMPLE_DATASET_URL ??
+    "https://raw.githubusercontent.com/ChibuikeOD/Ticket-Support-Automation/main/Datasets/customer_support_tickets_200k.csv"
+  );
+}
+
 export function mapDatasetTicketRow(row: CsvTicket, rowNumber: number): DatasetTicket {
   const externalId = firstValue(row, ["ticket_id", "Ticket ID"]);
 
@@ -81,6 +89,30 @@ export function mapDatasetTicketRow(row: CsvTicket, rowNumber: number): DatasetT
 export function readDatasetTickets(cwd = process.cwd()) {
   const csvPath = datasetCsvPath(cwd);
   const csv = fs.readFileSync(csvPath, "utf8");
+
+  return parseDatasetTickets(csv, csvPath);
+}
+
+export async function readDatasetTicketsAsync(cwd = process.cwd()) {
+  const csvPath = datasetCsvPath(cwd);
+
+  try {
+    return parseDatasetTickets(await readFile(csvPath, "utf8"), csvPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+
+  const url = sampleDatasetUrl();
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Sample dataset request failed with status ${response.status}`);
+  }
+
+  return parseDatasetTickets(await response.text(), url);
+}
+
+function parseDatasetTickets(csv: string, csvPath: string) {
   const parsed = Papa.parse<CsvTicket>(csv, {
     header: true,
     skipEmptyLines: true,
