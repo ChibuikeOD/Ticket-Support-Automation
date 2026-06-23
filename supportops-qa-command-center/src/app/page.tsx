@@ -25,18 +25,18 @@ export default async function OverviewPage() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label="Gold cases" value={String(gold.dataset.caseCount)} helper="Curated eval rows" />
         <MetricCard
-          label="Final-action accuracy"
-          value={latest ? `${latest.summary.finalActionAccuracy}%` : "No run"}
+          label="Evaluation score"
+          value={latest ? `${latest.summary.matchedPoints}/${latest.summary.totalPoints}` : "No run"}
+          helper="Category + intent + action points"
+        />
+        <MetricCard
+          label="Action accuracy"
+          value={latest ? `${latest.summary.actionPoints}/${latest.summary.totalCases}` : "No run"}
           helper="Latest gold evaluation"
         />
         <MetricCard
-          label="Escalation recall"
-          value={latest ? `${latest.summary.escalationRecall}%` : "No run"}
-          helper="Expected escalations caught"
-        />
-        <MetricCard
-          label="Unsafe auto-resolve"
-          value={latest ? String(latest.summary.unsafeAutoResolveCount) : "No run"}
+          label="Intent accuracy"
+          value={latest ? `${latest.summary.intentPoints}/${latest.summary.totalCases}` : "No run"}
           helper="Latest gold evaluation"
         />
       </div>
@@ -68,11 +68,16 @@ export default async function OverviewPage() {
               Generated: <span className="font-semibold text-primary">{generatedAt}</span>
             </div>
             <div className="rounded-xl bg-surface-container-high/55 px-4 py-3">
-              Risk accuracy: <span className="font-semibold text-primary">{latest.summary.riskAccuracy}%</span>
+              Category points:{" "}
+              <span className="font-semibold text-primary">
+                {latest.summary.categoryPoints}/{latest.summary.totalCases}
+              </span>
             </div>
             <div className="rounded-xl bg-surface-container-high/55 px-4 py-3">
-              Policy-flag accuracy:{" "}
-              <span className="font-semibold text-primary">{latest.summary.policyFlagAccuracy}%</span>
+              Score:{" "}
+              <span className="font-semibold text-primary">
+                {latest.summary.matchedPoints}/{latest.summary.totalPoints} ({latest.summary.scorePercent}%)
+              </span>
             </div>
           </div>
         ) : (

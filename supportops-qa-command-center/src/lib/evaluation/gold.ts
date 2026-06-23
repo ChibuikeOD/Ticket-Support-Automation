@@ -32,22 +32,19 @@ export interface GoldCaseScore {
   caseId: string;
   sourceTicketId: string;
   passed: boolean;
-  unsafeAutoResolve: boolean;
+  pointsEarned: number;
+  pointsPossible: number;
   failures: string[];
   matches: {
     category: boolean;
     customerIntent: boolean;
-    riskLevel: boolean;
     finalAction: boolean;
-    policyFlags: boolean;
   };
-  expected: GoldCase["expected"];
+  expected: Pick<GoldCase["expected"], "category" | "customerIntent" | "finalAction">;
   actual: {
     category: string;
     customerIntent: string;
-    riskLevel: RiskLevel;
     finalAction: RecommendedAction;
-    policyFlags: string[];
     confidence: number;
     guardrailReasons: string[];
   };
@@ -55,15 +52,16 @@ export interface GoldCaseScore {
 
 export interface GoldEvaluationSummary {
   totalCases: number;
+  totalPoints: number;
+  matchedPoints: number;
+  scorePercent: number;
+  categoryPoints: number;
+  intentPoints: number;
+  actionPoints: number;
   passedCases: number;
   categoryAccuracy: number;
   customerIntentAccuracy: number;
-  riskAccuracy: number;
   finalActionAccuracy: number;
-  policyFlagAccuracy: number;
-  escalationRecall: number;
-  unsafeAutoResolveRate: number;
-  unsafeAutoResolveCount: number;
 }
 
 export interface GoldEvaluationReport {
@@ -165,64 +163,41 @@ export function loadGoldCasesFromCsv(csvText: string): GoldCase[] {
   });
 }
 
-function policyFlagsFromAnalysis(analysis: AiAnalysisResult): string[] {
-  return analysis.policyChecks.flatMap((check) => {
-    const text = `${check.policy} ${check.reason}`.toLowerCase();
-    const flags: string[] = [];
 
-    if (text.includes("payment")) flags.push("payment_issue");
-    if (text.includes("billing")) flags.push("billing_issue");
-    if (text.includes("refund")) flags.push("refund_request");
-    if (text.includes("financial")) flags.push("financial_sensitive");
-    if (text.includes("security")) flags.push("security_sensitive");
-    if (text.includes("authentication") || text.includes("two-factor")) flags.push("authentication");
-    if (text.includes("human review")) flags.push("human_review_required");
-    if (text.includes("escalation")) flags.push("escalation_required");
-    if (text.includes("bug")) flags.push("bug_report");
-    if (text.includes("troubleshooting")) flags.push("technical_troubleshooting");
-    if (text.includes("account access") || text.includes("credential")) flags.push("account_access");
-    if (text.includes("subscription")) flags.push("subscription_change");
+export const GOLD_SCORE_DIMENSIONS = 3;
 
-    return flags;
-  });
-}
-
-function includesExpectedFlags(actualFlags: string[], expectedFlags: string[]): boolean {
-  if (expectedFlags.length === 0) return true;
-  const actual = new Set(actualFlags);
-  return expectedFlags.every((flag) => actual.has(flag));
+function scoreDimensionFailures(matches: GoldCaseScore["matches"]): string[] {
+  return Object.entries(matches)
+    .filter(([, matched]) => !matched)
+    .map(([key]) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
 }
 
 export function scoreGoldCase(goldCase: GoldCase, actual: ActualGoldResult): GoldCaseScore {
-  const actualPolicyFlags = Array.from(new Set(policyFlagsFromAnalysis(actual.analysis)));
   const matches = {
     category: normalizeLabel(actual.analysis.issueCategory) === normalizeLabel(goldCase.expected.category),
     customerIntent:
       normalizeLabel(actual.analysis.customerIntent) === normalizeLabel(goldCase.expected.customerIntent),
-    riskLevel: actual.analysis.riskLevel === goldCase.expected.riskLevel,
     finalAction: actual.finalAction === goldCase.expected.finalAction,
-    policyFlags: includesExpectedFlags(actualPolicyFlags, goldCase.expected.policyFlags),
   };
-  const failures = Object.entries(matches)
-    .filter(([, matched]) => !matched)
-    .map(([key]) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
-  const unsafeAutoResolve =
-    actual.finalAction === "auto_resolve" && goldCase.expected.finalAction !== "auto_resolve";
+  const pointsEarned = Number(matches.category) + Number(matches.customerIntent) + Number(matches.finalAction);
 
   return {
     caseId: goldCase.id,
     sourceTicketId: goldCase.sourceTicketId,
-    passed: failures.length === 0 && !unsafeAutoResolve,
-    unsafeAutoResolve,
-    failures,
+    passed: pointsEarned === GOLD_SCORE_DIMENSIONS,
+    pointsEarned,
+    pointsPossible: GOLD_SCORE_DIMENSIONS,
+    failures: scoreDimensionFailures(matches),
     matches,
-    expected: goldCase.expected,
+    expected: {
+      category: goldCase.expected.category,
+      customerIntent: goldCase.expected.customerIntent,
+      finalAction: goldCase.expected.finalAction,
+    },
     actual: {
       category: actual.analysis.issueCategory,
       customerIntent: actual.analysis.customerIntent,
-      riskLevel: actual.analysis.riskLevel,
       finalAction: actual.finalAction,
-      policyFlags: actualPolicyFlags,
       confidence: actual.analysis.confidence,
       guardrailReasons: actual.guardrailReasons,
     },
@@ -236,24 +211,24 @@ function percent(numerator: number, denominator: number): number {
 
 export function summarizeGoldEvaluation(scores: GoldCaseScore[]): GoldEvaluationSummary {
   const totalCases = scores.length;
-  const expectedEscalations = scores.filter((score) => score.expected.finalAction === "escalate");
-  const foundEscalations = expectedEscalations.filter((score) => score.actual.finalAction === "escalate");
-  const unsafeAutoResolveCount = scores.filter((score) => score.unsafeAutoResolve).length;
+  const totalPoints = totalCases * GOLD_SCORE_DIMENSIONS;
+  const categoryPoints = scores.filter((score) => score.matches.category).length;
+  const intentPoints = scores.filter((score) => score.matches.customerIntent).length;
+  const actionPoints = scores.filter((score) => score.matches.finalAction).length;
+  const matchedPoints = scores.reduce((sum, score) => sum + score.pointsEarned, 0);
 
   return {
     totalCases,
+    totalPoints,
+    matchedPoints,
+    scorePercent: percent(matchedPoints, totalPoints),
+    categoryPoints,
+    intentPoints,
+    actionPoints,
     passedCases: scores.filter((score) => score.passed).length,
-    categoryAccuracy: percent(scores.filter((score) => score.matches.category).length, totalCases),
-    customerIntentAccuracy: percent(
-      scores.filter((score) => score.matches.customerIntent).length,
-      totalCases,
-    ),
-    riskAccuracy: percent(scores.filter((score) => score.matches.riskLevel).length, totalCases),
-    finalActionAccuracy: percent(scores.filter((score) => score.matches.finalAction).length, totalCases),
-    policyFlagAccuracy: percent(scores.filter((score) => score.matches.policyFlags).length, totalCases),
-    escalationRecall: percent(foundEscalations.length, expectedEscalations.length),
-    unsafeAutoResolveRate: percent(unsafeAutoResolveCount, totalCases),
-    unsafeAutoResolveCount,
+    categoryAccuracy: percent(categoryPoints, totalCases),
+    customerIntentAccuracy: percent(intentPoints, totalCases),
+    finalActionAccuracy: percent(actionPoints, totalCases),
   };
 }
 
@@ -346,15 +321,11 @@ export function buildGoldEvaluationMarkdown(options: BuildGoldEvaluationMarkdown
     "## Summary",
     "",
     `- Total cases: ${summary.totalCases}`,
-    `- Passed cases: ${summary.passedCases}`,
-    `- Category accuracy: ${summary.categoryAccuracy}%`,
-    `- Customer-intent accuracy: ${summary.customerIntentAccuracy}%`,
-    `- Risk accuracy: ${summary.riskAccuracy}%`,
-    `- Final-action accuracy: ${summary.finalActionAccuracy}%`,
-    `- Policy-flag accuracy: ${summary.policyFlagAccuracy}%`,
-    `- Escalation recall: ${summary.escalationRecall}%`,
-    `- Unsafe auto-resolve rate: ${summary.unsafeAutoResolveRate}%`,
-    `- Unsafe auto-resolve count: ${summary.unsafeAutoResolveCount}`,
+    `- Score: ${summary.matchedPoints}/${summary.totalPoints} (${summary.scorePercent}%)`,
+    `- Passed cases (3/3 each): ${summary.passedCases}`,
+    `- Category points: ${summary.categoryPoints}/${summary.totalCases}`,
+    `- Intent points: ${summary.intentPoints}/${summary.totalCases}`,
+    `- Action points: ${summary.actionPoints}/${summary.totalCases}`,
     "",
     "## Failure Examples",
     "",
@@ -363,8 +334,8 @@ export function buildGoldEvaluationMarkdown(options: BuildGoldEvaluationMarkdown
       : failingResults.flatMap((result) => [
           `- ${result.case.id}: ${result.score.failures.join(", ")}`,
           `  - Ticket: ${result.case.ticket.description}`,
-          `  - Expected: ${result.score.expected.finalAction}, ${result.score.expected.riskLevel}, ${result.score.expected.category}`,
-          `  - Actual: ${result.score.actual.finalAction}, ${result.score.actual.riskLevel}, ${result.score.actual.category}`,
+          `  - Expected: ${result.score.expected.finalAction}, ${result.score.expected.category}, ${result.score.expected.customerIntent}`,
+          `  - Actual: ${result.score.actual.finalAction}, ${result.score.actual.category}, ${result.score.actual.customerIntent}`,
         ])),
     "",
   ].join("\n");

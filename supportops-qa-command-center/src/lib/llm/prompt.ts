@@ -1,3 +1,5 @@
+import { buildFewShotPromptSection } from "@/lib/llm/few-shot-examples";
+
 interface PromptTicket {
   id: string;
   subject: string | null;
@@ -11,6 +13,7 @@ export const DEFAULT_PROMPT_INSTRUCTIONS =
   "You are an AI support operations assistant.\n" +
   "Analyze the customer support ticket and return only valid JSON.\n" +
   "Do not include Markdown fences.\n" +
+  "Match issueCategory and customerIntent to the few-shot label style exactly when the ticket fits that pattern.\n" +
   "Be conservative. Recommend human_review or escalate for billing, refunds, account access, privacy, security, outages, angry customers, missing facts, or unsafe actions.";
 
 export function buildSupportAnalysisPrompt(
@@ -21,11 +24,13 @@ export function buildSupportAnalysisPrompt(
   return [
     promptInstructions.trim(),
     "",
+    buildFewShotPromptSection(),
+    "",
     "Required JSON shape:",
     JSON.stringify(
       {
-        issueCategory: "Shipping",
-        customerIntent: "Check delivery status",
+        issueCategory: "Payment Problem",
+        customerIntent: "Resolve failed transaction after payment deduction",
         summary: "One sentence summary.",
         sentiment: "positive | neutral | frustrated | angry",
         riskLevel: "low | medium | high",

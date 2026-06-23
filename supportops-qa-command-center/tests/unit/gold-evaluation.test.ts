@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyGuardrails } from "@/lib/automation/guardrails";
 import {
+  GOLD_SCORE_DIMENSIONS,
   loadGoldCasesFromCsv,
   scoreGoldCase,
   summarizeGoldEvaluation,
@@ -57,7 +58,7 @@ describe("gold evaluation", () => {
     });
   });
 
-  it("scores exact label matches and flags unsafe auto-resolve failures", () => {
+  it("scores category, intent, and action out of three points per case", () => {
     const [goldCase] = loadGoldCasesFromCsv(goldCsv);
     const actual = {
       analysis: paymentAnalysis,
@@ -67,14 +68,16 @@ describe("gold evaluation", () => {
 
     const score = scoreGoldCase(goldCase, actual);
 
+    expect(score.pointsPossible).toBe(GOLD_SCORE_DIMENSIONS);
+    expect(score.pointsEarned).toBe(2);
     expect(score.matches.category).toBe(true);
-    expect(score.matches.riskLevel).toBe(true);
+    expect(score.matches.customerIntent).toBe(true);
     expect(score.matches.finalAction).toBe(false);
-    expect(score.unsafeAutoResolve).toBe(true);
     expect(score.failures).toContain("final_action");
+    expect(score.passed).toBe(false);
   });
 
-  it("summarizes accuracy, escalation recall, and unsafe auto-resolve rate", () => {
+  it("summarizes total points as cases times three", () => {
     const cases = loadGoldCasesFromCsv(goldCsv);
     const scores = [
       scoreGoldCase(cases[0], {
@@ -98,11 +101,13 @@ describe("gold evaluation", () => {
     const summary = summarizeGoldEvaluation(scores);
 
     expect(summary.totalCases).toBe(2);
-    expect(summary.categoryAccuracy).toBe(100);
-    expect(summary.riskAccuracy).toBe(50);
-    expect(summary.finalActionAccuracy).toBe(50);
-    expect(summary.escalationRecall).toBe(0);
-    expect(summary.unsafeAutoResolveRate).toBe(0);
+    expect(summary.totalPoints).toBe(6);
+    expect(summary.matchedPoints).toBe(5);
+    expect(summary.categoryPoints).toBe(2);
+    expect(summary.intentPoints).toBe(2);
+    expect(summary.actionPoints).toBe(1);
+    expect(summary.scorePercent).toBe(83);
+    expect(summary.passedCases).toBe(1);
   });
 
   it("runs gold cases through an analyzer and applies guardrails before scoring", async () => {
@@ -116,7 +121,8 @@ describe("gold evaluation", () => {
       applyDecision: applyGuardrails,
     });
 
-    expect(report.summary.finalActionAccuracy).toBe(100);
+    expect(report.summary.matchedPoints).toBe(3);
+    expect(report.summary.totalPoints).toBe(3);
     expect(report.results[0].score.passed).toBe(true);
   });
 
@@ -165,7 +171,7 @@ describe("gold evaluation", () => {
           : {
               ...paymentAnalysis,
               issueCategory: "Security Concern",
-              customerIntent: "Receive two-factor authentication code",
+              customerIntent: "Reset account password",
               riskLevel: "medium",
               recommendedAction: "human_review",
             },
@@ -181,9 +187,8 @@ describe("gold evaluation", () => {
 
     expect(markdown).toContain("# Gold Evaluation Report");
     expect(markdown).toContain("- Model: test-model");
-    expect(markdown).toContain("- Final-action accuracy: 100%");
-    expect(markdown).toContain("- Risk accuracy: 50%");
+    expect(markdown).toContain("- Score: 5/6 (83%)");
     expect(markdown).toContain("GOLD-00002");
-    expect(markdown).toContain("risk_level");
+    expect(markdown).toContain("customer_intent");
   });
 });

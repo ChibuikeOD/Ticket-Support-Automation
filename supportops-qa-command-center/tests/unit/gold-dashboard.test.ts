@@ -28,15 +28,16 @@ describe("gold dashboard summary", () => {
         datasetPath,
         summary: {
           totalCases: 2,
+          totalPoints: 6,
+          matchedPoints: 5,
+          scorePercent: 83,
+          categoryPoints: 2,
+          intentPoints: 2,
+          actionPoints: 1,
           passedCases: 1,
-          categoryAccuracy: 50,
+          categoryAccuracy: 100,
           customerIntentAccuracy: 100,
-          riskAccuracy: 50,
-          finalActionAccuracy: 100,
-          policyFlagAccuracy: 50,
-          escalationRecall: 100,
-          unsafeAutoResolveRate: 0,
-          unsafeAutoResolveCount: 0,
+          finalActionAccuracy: 50,
         },
       }),
     );
@@ -48,7 +49,8 @@ describe("gold dashboard summary", () => {
 
     expect(summary.dataset.caseCount).toBe(2);
     expect(summary.latestReport?.model).toBe("deepseek-chat");
-    expect(summary.latestReport?.summary.finalActionAccuracy).toBe(100);
+    expect(summary.latestReport?.summary.matchedPoints).toBe(5);
+    expect(summary.latestReport?.summary.totalPoints).toBe(6);
   });
 
   it("returns null latest report when no report has been generated", async () => {

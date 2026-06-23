@@ -14,15 +14,16 @@ import { DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
 
 export interface EvaluationRunSummary {
   totalCases: number;
+  totalPoints: number;
+  matchedPoints: number;
+  scorePercent: number;
+  categoryPoints: number;
+  intentPoints: number;
+  actionPoints: number;
   passedCases: number;
   categoryAccuracy: number;
   customerIntentAccuracy: number;
-  riskAccuracy: number;
   finalActionAccuracy: number;
-  policyFlagAccuracy: number;
-  escalationRecall: number;
-  unsafeAutoResolveCount: number;
-  unsafeAutoResolveRate: number;
 }
 
 export interface EvaluationRunResult {
@@ -37,8 +38,8 @@ export interface EvaluationRunResult {
   failures?: Array<{
     caseId: string;
     failures: string[];
-    expected: { finalAction: string; riskLevel: string; category: string };
-    actual: { finalAction: string; riskLevel: string; category: string };
+    expected: { finalAction: string; category: string; customerIntent: string };
+    actual: { finalAction: string; category: string; customerIntent: string };
   }>;
 }
 

@@ -132,14 +132,12 @@ export function EvaluationWorkspace() {
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ["Passed", `${result.summary.passedCases}/${result.summary.totalCases}`],
-              ["Final action", `${result.summary.finalActionAccuracy}%`],
-              ["Risk", `${result.summary.riskAccuracy}%`],
-              ["Escalation recall", `${result.summary.escalationRecall}%`],
-              ["Category", `${result.summary.categoryAccuracy}%`],
-              ["Intent", `${result.summary.customerIntentAccuracy}%`],
-              ["Policy flags", `${result.summary.policyFlagAccuracy}%`],
-              ["Unsafe auto-resolve", String(result.summary.unsafeAutoResolveCount)],
+              ["Score", `${result.summary.matchedPoints}/${result.summary.totalPoints}`],
+              ["Score %", `${result.summary.scorePercent}%`],
+              ["Perfect cases", `${result.summary.passedCases}/${result.summary.totalCases}`],
+              ["Category", `${result.summary.categoryPoints}/${result.summary.totalCases}`],
+              ["Intent", `${result.summary.intentPoints}/${result.summary.totalCases}`],
+              ["Action", `${result.summary.actionPoints}/${result.summary.totalCases}`],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl bg-surface-container-high/55 p-4">
                 <div className="echo-label text-outline">{label}</div>
@@ -157,11 +155,12 @@ export function EvaluationWorkspace() {
                     <div className="mt-1 text-on-surface-variant">Failures: {failure.failures.join(", ")}</div>
                     <div className="mt-2 grid gap-2 md:grid-cols-2">
                       <div>
-                        Expected: {failure.expected.finalAction}, {failure.expected.riskLevel},{" "}
-                        {failure.expected.category}
+                        Expected: {failure.expected.finalAction}, {failure.expected.category},{" "}
+                        {failure.expected.customerIntent}
                       </div>
                       <div>
-                        Actual: {failure.actual.finalAction}, {failure.actual.riskLevel}, {failure.actual.category}
+                        Actual: {failure.actual.finalAction}, {failure.actual.category},{" "}
+                        {failure.actual.customerIntent}
                       </div>
                     </div>
                   </div>
