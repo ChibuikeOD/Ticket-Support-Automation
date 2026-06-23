@@ -105,9 +105,10 @@ async function main() {
   ]);
 
   console.log(`Gold cases evaluated: ${report.summary.totalCases}`);
-  console.log(`Final-action accuracy: ${report.summary.finalActionAccuracy}%`);
-  console.log(`Escalation recall: ${report.summary.escalationRecall}%`);
-  console.log(`Unsafe auto-resolve count: ${report.summary.unsafeAutoResolveCount}`);
+  console.log(`Score: ${report.summary.matchedPoints}/${report.summary.totalPoints} (${report.summary.scorePercent}%)`);
+  console.log(`Category points: ${report.summary.categoryPoints}/${report.summary.totalCases}`);
+  console.log(`Intent points: ${report.summary.intentPoints}/${report.summary.totalCases}`);
+  console.log(`Action points: ${report.summary.actionPoints}/${report.summary.totalCases}`);
   console.log(`JSON report: ${jsonPath}`);
   console.log(`Markdown report: ${markdownPath}`);
 }
