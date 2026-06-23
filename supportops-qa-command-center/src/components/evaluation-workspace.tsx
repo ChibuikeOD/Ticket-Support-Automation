@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Play, SlidersHorizontal } from "lucide-react";
+import { EvaluationCaseResults } from "@/components/evaluation-case-results";
 import { useEvaluationRun } from "@/components/evaluation-run-provider";
 import { EVALUATION_BATCH_SIZES, DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
 import { DEFAULT_PROMPT_INSTRUCTIONS } from "@/lib/llm/prompt";
@@ -145,31 +146,7 @@ export function EvaluationWorkspace() {
               </div>
             ))}
           </div>
-          <div className="mt-6">
-            <h3 className="text-xl font-bold">Failure Examples</h3>
-            <div className="mt-3 space-y-3">
-              {result.failures?.length ? (
-                result.failures.map((failure) => (
-                  <div key={failure.caseId} className="rounded-xl bg-surface-container-high/55 p-4 text-sm">
-                    <div className="font-bold text-primary">{failure.caseId}</div>
-                    <div className="mt-1 text-on-surface-variant">Failures: {failure.failures.join(", ")}</div>
-                    <div className="mt-2 grid gap-2 md:grid-cols-2">
-                      <div>
-                        Expected: {failure.expected.finalAction}, {failure.expected.category},{" "}
-                        {failure.expected.customerIntent}
-                      </div>
-                      <div>
-                        Actual: {failure.actual.finalAction}, {failure.actual.category},{" "}
-                        {failure.actual.customerIntent}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-on-surface-variant">No failures in this run.</p>
-              )}
-            </div>
-          </div>
+          <EvaluationCaseResults cases={result.cases ?? []} />
         </section>
       ) : null}
     </div>

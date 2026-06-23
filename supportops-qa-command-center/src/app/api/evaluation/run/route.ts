@@ -1,8 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { applyGuardrails } from "@/lib/automation/guardrails";
-import { defaultGoldDatasetPath } from "@/lib/evaluation/dashboard";
 import { loadGoldCasesFromCsv, runGoldEvaluation } from "@/lib/evaluation/gold";
+import {
+  buildLatestGoldReport,
+  defaultGoldDatasetPath,
+  mapGoldResultToCaseResult,
+  saveLatestGoldReport,
+} from "@/lib/evaluation/report-store";
 import { selectRandomGoldCases, DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
 import { analyzeTicketWithDeepSeek } from "@/lib/llm/deepseek";
 import { DEFAULT_PROMPT_INSTRUCTIONS } from "@/lib/llm/prompt";
@@ -70,8 +75,20 @@ export async function POST(request: Request) {
         }),
     });
 
+    const latestReport = buildLatestGoldReport({
+      generatedAt,
+      model,
+      promptVersion: process.env.GOLD_EVAL_PROMPT_VERSION ?? "ui",
+      datasetPath,
+      batchSize,
+      source: "ui",
+      report,
+    });
+
+    await saveLatestGoldReport(latestReport);
+
     return NextResponse.json({
-      generatedAt: generatedAt.toISOString(),
+      generatedAt: latestReport.generatedAt,
       model,
       batchSize,
       sampledCaseIds: cases.map((goldCase) => goldCase.id),
@@ -80,15 +97,7 @@ export async function POST(request: Request) {
       datasetCaseCount: allCases.length,
       evaluatedCaseCount: cases.length,
       summary: report.summary,
-      failures: report.results
-        .filter((result) => !result.score.passed)
-        .slice(0, 10)
-        .map((result) => ({
-          caseId: result.case.id,
-          failures: result.score.failures,
-          expected: result.score.expected,
-          actual: result.score.actual,
-        })),
+      cases: report.results.map(mapGoldResultToCaseResult),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Evaluation run failed";

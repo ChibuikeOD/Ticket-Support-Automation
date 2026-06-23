@@ -8,6 +8,10 @@ import {
   runGoldEvaluation,
 } from "@/lib/evaluation/gold";
 import { DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
+import {
+  buildLatestGoldReport,
+  saveLatestGoldReport,
+} from "@/lib/evaluation/report-store";
 import { defaultPolicyTexts } from "@/lib/policies/defaults";
 
 async function loadDotEnv() {
@@ -73,7 +77,6 @@ async function main() {
   const stamp = generatedAt.toISOString().replace(/[:.]/g, "-");
   const jsonPath = path.join(outputDir, `gold-eval-${stamp}.json`);
   const markdownPath = path.join(outputDir, `gold-eval-${stamp}.md`);
-  const latestJsonPath = path.join(outputDir, "latest-gold-eval.json");
   const latestMarkdownPath = path.join(outputDir, "latest-gold-eval.md");
   const markdown = buildGoldEvaluationMarkdown({
     report,
@@ -83,14 +86,25 @@ async function main() {
     generatedAt,
   });
 
+  const latestReport = buildLatestGoldReport({
+    generatedAt,
+    model,
+    promptVersion,
+    datasetPath,
+    batchSize: cases.length,
+    source: "cli",
+    report,
+  });
+
   const payload = JSON.stringify(
     {
-      generatedAt: generatedAt.toISOString(),
+      generatedAt: latestReport.generatedAt,
       model,
       promptVersion,
       datasetPath,
       confidenceThreshold,
       summary: report.summary,
+      cases: latestReport.cases,
       results: report.results,
     },
     null,
@@ -100,8 +114,8 @@ async function main() {
   await Promise.all([
     writeFile(jsonPath, payload),
     writeFile(markdownPath, markdown),
-    writeFile(latestJsonPath, payload),
     writeFile(latestMarkdownPath, markdown),
+    saveLatestGoldReport(latestReport, outputDir),
   ]);
 
   console.log(`Gold cases evaluated: ${report.summary.totalCases}`);

@@ -1,41 +1,31 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { loadGoldCasesFromCsv, type GoldEvaluationSummary } from "@/lib/evaluation/gold";
+import { loadGoldCasesFromCsv } from "@/lib/evaluation/gold";
+import {
+  defaultGoldDatasetPath,
+  loadLatestGoldReport,
+  type LatestGoldReport,
+} from "@/lib/evaluation/report-store";
 
-export interface LatestGoldReport {
-  generatedAt: string;
-  model: string;
-  promptVersion: string;
-  datasetPath: string;
-  summary: GoldEvaluationSummary;
-}
+export type { LatestGoldReport };
 
 interface LoadGoldDashboardSummaryOptions {
   datasetPath?: string;
   reportsDir?: string;
 }
 
-export function defaultGoldDatasetPath(cwd = process.cwd()) {
-  return process.env.GOLD_DATASET_PATH
-    ? path.resolve(cwd, process.env.GOLD_DATASET_PATH)
-    : path.resolve(cwd, "..", "Datasets", "gold_eval_clean_closed_sat5.csv");
-}
-
-function goldDatasetUrl() {
-  return (
-    process.env.GOLD_DATASET_URL ??
-    "https://raw.githubusercontent.com/ChibuikeOD/Ticket-Support-Automation/main/Datasets/gold_eval_clean_closed_sat5.csv"
-  );
-}
+export { defaultGoldDatasetPath };
 
 async function readGoldDatasetText(datasetPath: string) {
+  const { readFile } = await import("node:fs/promises");
+
   try {
     return await readFile(datasetPath, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 
-  const url = goldDatasetUrl();
+  const url =
+    process.env.GOLD_DATASET_URL ??
+    "https://raw.githubusercontent.com/ChibuikeOD/Ticket-Support-Automation/main/Datasets/gold_eval_clean_closed_sat5.csv";
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -45,18 +35,8 @@ async function readGoldDatasetText(datasetPath: string) {
   return response.text();
 }
 
-async function readLatestReport(reportsDir: string): Promise<LatestGoldReport | null> {
-  try {
-    return JSON.parse(await readFile(path.join(reportsDir, "latest-gold-eval.json"), "utf8")) as LatestGoldReport;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
-  }
-}
-
 export async function loadGoldDashboardSummary(options: LoadGoldDashboardSummaryOptions = {}) {
   const datasetPath = options.datasetPath ?? defaultGoldDatasetPath();
-  const reportsDir = options.reportsDir ?? path.resolve(process.cwd(), "evaluation-reports");
   const cases = loadGoldCasesFromCsv(await readGoldDatasetText(datasetPath));
 
   return {
@@ -64,6 +44,6 @@ export async function loadGoldDashboardSummary(options: LoadGoldDashboardSummary
       path: datasetPath,
       caseCount: cases.length,
     },
-    latestReport: await readLatestReport(reportsDir),
+    latestReport: await loadLatestGoldReport(options.reportsDir),
   };
 }

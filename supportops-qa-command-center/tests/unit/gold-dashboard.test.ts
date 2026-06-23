@@ -26,6 +26,8 @@ describe("gold dashboard summary", () => {
         model: "deepseek-chat",
         promptVersion: "v1",
         datasetPath,
+        source: "cli",
+        cases: [],
         summary: {
           totalCases: 2,
           totalPoints: 6,

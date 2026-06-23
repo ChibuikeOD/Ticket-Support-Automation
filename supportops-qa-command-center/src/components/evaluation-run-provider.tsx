@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Loader2 } from "lucide-react";
 import { DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
+import type { EvaluationCaseResult } from "@/lib/evaluation/report-store";
 
 export interface EvaluationRunSummary {
   totalCases: number;
@@ -35,12 +36,7 @@ export interface EvaluationRunResult {
   datasetCaseCount?: number;
   evaluatedCaseCount?: number;
   summary?: EvaluationRunSummary;
-  failures?: Array<{
-    caseId: string;
-    failures: string[];
-    expected: { finalAction: string; category: string; customerIntent: string };
-    actual: { finalAction: string; category: string; customerIntent: string };
-  }>;
+  cases?: EvaluationCaseResult[];
 }
 
 export interface EvaluationRunParams {
@@ -136,6 +132,19 @@ export function EvaluationRunProvider({ children }: { children: ReactNode }) {
     params: null,
     result: null,
   });
+
+  useEffect(() => {
+    void fetch("/api/evaluation/latest")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: EvaluationRunResult | null) => {
+        if (!data?.summary || !data.cases?.length) return;
+
+        setState((current) => (current.result ? current : { ...current, result: data }));
+      })
+      .catch(() => {
+        // Ignore hydration errors when no prior run exists.
+      });
+  }, []);
 
   const runEvaluation = useCallback(async (params: EvaluationRunParams): Promise<EvaluationRunResult> => {
     setState({

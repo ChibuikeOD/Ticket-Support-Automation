@@ -1,6 +1,7 @@
 import { MetricCard } from "@/components/metric-card";
 import { SampleRunner } from "@/components/sample-runner";
 import { loadGoldDashboardSummary } from "@/lib/evaluation/dashboard";
+import Link from "next/link";
 
 export default async function OverviewPage() {
   const gold = await loadGoldDashboardSummary();
@@ -30,21 +31,27 @@ export default async function OverviewPage() {
           helper="Category + intent + action points"
         />
         <MetricCard
-          label="Action accuracy"
-          value={latest ? `${latest.summary.actionPoints}/${latest.summary.totalCases}` : "No run"}
-          helper="Latest gold evaluation"
+          label="Perfect cases"
+          value={latest ? `${latest.summary.passedCases}/${latest.summary.totalCases}` : "No run"}
+          helper="Latest evaluation run"
         />
         <MetricCard
-          label="Intent accuracy"
-          value={latest ? `${latest.summary.intentPoints}/${latest.summary.totalCases}` : "No run"}
-          helper="Latest gold evaluation"
+          label="Score %"
+          value={latest ? `${latest.summary.scorePercent}%` : "No run"}
+          helper="Latest evaluation run"
         />
       </div>
       <section className="glass-panel rounded-3xl p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Latest Gold Evaluation Report</h2>
-            <p className="mt-1 text-sm text-on-surface-variant">{gold.dataset.path}</p>
+            <h2 className="text-2xl font-bold text-foreground">Latest Evaluation Run</h2>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              {latest
+                ? `${latest.source === "ui" ? "Saved from the Evaluation tab" : "Saved from CLI gold eval"}${
+                    latest.batchSize ? ` · ${latest.batchSize} cases` : ""
+                  }`
+                : gold.dataset.path}
+            </p>
           </div>
           <span className="echo-label rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary">
             Gold Dataset
@@ -68,21 +75,42 @@ export default async function OverviewPage() {
               Generated: <span className="font-semibold text-primary">{generatedAt}</span>
             </div>
             <div className="rounded-xl bg-surface-container-high/55 px-4 py-3">
+              Score:{" "}
+              <span className="font-semibold text-primary">
+                {latest.summary.matchedPoints}/{latest.summary.totalPoints} ({latest.summary.scorePercent}%)
+              </span>
+            </div>
+            <div className="rounded-xl bg-surface-container-high/55 px-4 py-3">
               Category points:{" "}
               <span className="font-semibold text-primary">
                 {latest.summary.categoryPoints}/{latest.summary.totalCases}
               </span>
             </div>
             <div className="rounded-xl bg-surface-container-high/55 px-4 py-3">
-              Score:{" "}
+              Action points:{" "}
               <span className="font-semibold text-primary">
-                {latest.summary.matchedPoints}/{latest.summary.totalPoints} ({latest.summary.scorePercent}%)
+                {latest.summary.actionPoints}/{latest.summary.totalCases}
               </span>
+            </div>
+            <div className="rounded-xl bg-surface-container-high/55 px-4 py-3">
+              Intent points:{" "}
+              <span className="font-semibold text-primary">
+                {latest.summary.intentPoints}/{latest.summary.totalCases}
+              </span>
+            </div>
+            <div className="rounded-xl bg-surface-container-high/55 px-4 py-3 md:col-span-2">
+              <Link href="/evaluation" className="font-semibold text-primary hover:underline">
+                View full case breakdown on the Evaluation tab
+              </Link>
             </div>
           </div>
         ) : (
           <div className="mt-5 rounded-xl bg-surface-container-high/55 p-4 text-sm text-on-surface-variant">
-            No gold evaluation report has been generated yet. Run `npm run eval:gold` to populate this section.
+            No evaluation run has been saved yet. Run a batch from the{" "}
+            <Link href="/evaluation" className="font-semibold text-primary hover:underline">
+              Evaluation tab
+            </Link>{" "}
+            to populate this section.
           </div>
         )}
       </section>
