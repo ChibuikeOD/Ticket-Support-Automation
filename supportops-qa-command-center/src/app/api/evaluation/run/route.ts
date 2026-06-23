@@ -85,10 +85,11 @@ export async function POST(request: Request) {
       report,
     });
 
-    await saveLatestGoldReport(latestReport);
+    const runId = await saveLatestGoldReport(latestReport);
 
     return NextResponse.json({
       generatedAt: latestReport.generatedAt,
+      runId,
       model,
       batchSize,
       sampledCaseIds: cases.map((goldCase) => goldCase.id),

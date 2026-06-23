@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Play, SlidersHorizontal } from "lucide-react";
 import { EvaluationCaseResults } from "@/components/evaluation-case-results";
+import { EvaluationSummaryGrid } from "@/components/evaluation-summary-grid";
 import { useEvaluationRun } from "@/components/evaluation-run-provider";
 import { EVALUATION_BATCH_SIZES, DEFAULT_GOLD_EVAL_CONCURRENCY } from "@/lib/evaluation/workspace";
 import { DEFAULT_PROMPT_INSTRUCTIONS } from "@/lib/llm/prompt";
@@ -131,20 +132,8 @@ export function EvaluationWorkspace() {
               {result.batchSize ?? batchSize} cases
             </span>
           </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["Score", `${result.summary.matchedPoints}/${result.summary.totalPoints}`],
-              ["Score %", `${result.summary.scorePercent}%`],
-              ["Perfect cases", `${result.summary.passedCases}/${result.summary.totalCases}`],
-              ["Category", `${result.summary.categoryPoints}/${result.summary.totalCases}`],
-              ["Intent", `${result.summary.intentPoints}/${result.summary.totalCases}`],
-              ["Action", `${result.summary.actionPoints}/${result.summary.totalCases}`],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-surface-container-high/55 p-4">
-                <div className="echo-label text-outline">{label}</div>
-                <div className="mt-2 text-3xl font-bold text-primary">{value}</div>
-              </div>
-            ))}
+          <div className="mt-5">
+            <EvaluationSummaryGrid summary={result.summary} />
           </div>
           <EvaluationCaseResults cases={result.cases ?? []} />
         </section>

@@ -84,7 +84,15 @@ GOLD_EVAL_LIMIT=10
 GOLD_EVAL_PROMPT_VERSION=v1
 ```
 
-The evaluator runs each gold ticket through the normal LLM analysis flow, applies deterministic guardrails, and writes JSON/Markdown reports to `evaluation-reports/`. It tracks category accuracy, intent accuracy, risk accuracy, final-action accuracy, policy-flag accuracy, escalation recall, and unsafe auto-resolve rate.
+The evaluator runs each gold ticket through the normal LLM analysis flow, applies deterministic guardrails, and writes JSON/Markdown reports to `evaluation-reports/`. It scores category, customer intent, and final action (3 points per case).
+
+## Reports
+
+The **Run Reports** tab shows the latest gold evaluation with case-level breakdown, failure themes, and run history. Export markdown from:
+
+- the Reports page
+- `/api/reports/gold-eval/latest/markdown`
+- `/api/reports/gold-eval/{runId}/markdown`
 
 ## Demo Script
 
@@ -92,7 +100,7 @@ The evaluator runs each gold ticket through the normal LLM analysis flow, applie
 2. Open the overview dashboard and review the gold evaluation metrics.
 3. Use Sample Run to process one open ticket from the 200k CSV.
 4. Inspect the LLM category, intent, risk, confidence, draft response, and final guardrail action.
-5. Export the Markdown QA report from Reports.
+5. Open **Run Reports** to review case breakdowns and export markdown.
 
 ## Safety Notes
 

@@ -1,5 +1,6 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import type { GoldEvaluationReport, GoldEvaluationSummary } from "@/lib/evaluation/gold";
 import { prisma } from "@/lib/db";
 
@@ -35,6 +36,7 @@ export interface EvaluationCaseResult {
 }
 
 export interface LatestGoldReport {
+  runId?: string;
   generatedAt: string;
   model: string;
   promptVersion: string;
@@ -45,7 +47,22 @@ export interface LatestGoldReport {
   cases: EvaluationCaseResult[];
 }
 
+export interface GoldEvalRunSummary {
+  runId: string;
+  generatedAt: string;
+  model: string;
+  promptVersion: string;
+  batchSize?: number;
+  source?: "cli" | "ui";
+  scorePercent: number;
+  passedCases: number;
+  totalCases: number;
+  matchedPoints: number;
+  totalPoints: number;
+}
+
 const LATEST_REPORT_FORMAT = "latest-gold-eval";
+const GOLD_EVAL_RUN_FORMAT_PREFIX = "gold-eval-run:";
 const GOLD_SCORE_DIMENSIONS = 3;
 
 function percent(numerator: number, denominator: number): number {
@@ -94,6 +111,28 @@ function normalizeLatestGoldReport(report: LatestGoldReport): LatestGoldReport {
   return {
     ...report,
     summary: normalizeGoldEvaluationSummary(report.summary, report.cases ?? []),
+  };
+}
+
+function goldEvalRunFormat(runId: string) {
+  return `${GOLD_EVAL_RUN_FORMAT_PREFIX}${runId}`;
+}
+
+export function toGoldEvalRunSummary(report: LatestGoldReport): GoldEvalRunSummary {
+  const normalized = normalizeLatestGoldReport(report);
+
+  return {
+    runId: normalized.runId ?? randomUUID(),
+    generatedAt: normalized.generatedAt,
+    model: normalized.model,
+    promptVersion: normalized.promptVersion,
+    batchSize: normalized.batchSize,
+    source: normalized.source,
+    scorePercent: normalized.summary.scorePercent,
+    passedCases: normalized.summary.passedCases,
+    totalCases: normalized.summary.totalCases,
+    matchedPoints: normalized.summary.matchedPoints,
+    totalPoints: normalized.summary.totalPoints,
   };
 }
 
@@ -193,9 +232,41 @@ async function persistLatestGoldReportToFilesystem(dir: string, content: string)
   }
 }
 
-export async function saveLatestGoldReport(report: LatestGoldReport, reportsDir?: string) {
+async function appendGoldEvalRunToDatabase(report: LatestGoldReport): Promise<boolean> {
+  if (!report.runId) return false;
+
+  try {
+    await prisma.reportExport.create({
+      data: {
+        format: goldEvalRunFormat(report.runId),
+        content: JSON.stringify(report, null, 2),
+      },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function appendGoldEvalRunToFilesystem(dir: string, report: LatestGoldReport): Promise<boolean> {
+  if (!report.runId) return false;
+
+  try {
+    const runsDir = path.join(dir, "runs");
+    await mkdir(runsDir, { recursive: true });
+    await writeFile(path.join(runsDir, `${report.runId}.json`), JSON.stringify(report, null, 2));
+    return true;
+  } catch (error) {
+    if (isFilesystemPersistenceError(error)) return false;
+    throw error;
+  }
+}
+
+export async function saveLatestGoldReport(report: LatestGoldReport, reportsDir?: string): Promise<string> {
   const dir = reportsDir ?? resolveReportsDir();
-  const content = JSON.stringify(report, null, 2);
+  const runId = report.runId ?? randomUUID();
+  const normalized = normalizeLatestGoldReport({ ...report, runId });
+  const content = JSON.stringify(normalized, null, 2);
 
   const [savedToDatabase, savedToFilesystem] = await Promise.all([
     persistLatestGoldReportToDatabase(content),
@@ -205,6 +276,13 @@ export async function saveLatestGoldReport(report: LatestGoldReport, reportsDir?
   if (!savedToDatabase && !savedToFilesystem) {
     throw new Error("Failed to persist latest gold evaluation report");
   }
+
+  await Promise.all([
+    appendGoldEvalRunToDatabase(normalized),
+    appendGoldEvalRunToFilesystem(dir, normalized),
+  ]);
+
+  return runId;
 }
 
 async function loadLatestGoldReportFromFilesystem(
@@ -238,6 +316,118 @@ export async function loadLatestGoldReport(reportsDir?: string): Promise<LatestG
   const loaders = process.env.VERCEL
     ? [() => loadLatestGoldReportFromDatabase(), () => loadLatestGoldReportFromFilesystem(dir)]
     : [() => loadLatestGoldReportFromFilesystem(dir), () => loadLatestGoldReportFromDatabase()];
+
+  for (const loader of loaders) {
+    const report = await loader();
+    if (report) {
+      return normalizeLatestGoldReport(report);
+    }
+  }
+
+  return null;
+}
+
+async function listGoldEvalRunsFromFilesystem(dir: string): Promise<GoldEvalRunSummary[]> {
+  try {
+    const runsDir = path.join(dir, "runs");
+    const files = await readdir(runsDir);
+    const runs = await Promise.all(
+      files
+        .filter((file) => file.endsWith(".json"))
+        .map(async (file) => {
+          const report = JSON.parse(
+            await readFile(path.join(runsDir, file), "utf8"),
+          ) as LatestGoldReport;
+          return toGoldEvalRunSummary(report);
+        }),
+    );
+
+    return runs.sort(
+      (left, right) => new Date(right.generatedAt).getTime() - new Date(left.generatedAt).getTime(),
+    );
+  } catch (error) {
+    if (isFilesystemPersistenceError(error)) return [];
+    throw error;
+  }
+}
+
+async function listGoldEvalRunsFromDatabase(limit: number): Promise<GoldEvalRunSummary[]> {
+  try {
+    const records = await prisma.reportExport.findMany({
+      where: { format: { startsWith: GOLD_EVAL_RUN_FORMAT_PREFIX } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    return records.map((record) => {
+      const report = normalizeLatestGoldReport(JSON.parse(record.content) as LatestGoldReport);
+      return toGoldEvalRunSummary(report);
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function listGoldEvalRuns(
+  options: { reportsDir?: string; limit?: number } = {},
+): Promise<GoldEvalRunSummary[]> {
+  const dir = options.reportsDir ?? resolveReportsDir();
+  const limit = options.limit ?? 50;
+  const loaders = process.env.VERCEL
+    ? [() => listGoldEvalRunsFromDatabase(limit), () => listGoldEvalRunsFromFilesystem(dir)]
+    : [() => listGoldEvalRunsFromFilesystem(dir), () => listGoldEvalRunsFromDatabase(limit)];
+
+  for (const loader of loaders) {
+    const runs = await loader();
+    if (runs.length > 0) {
+      return runs.slice(0, limit);
+    }
+  }
+
+  return [];
+}
+
+async function loadGoldEvalRunFromFilesystem(
+  dir: string,
+  runId: string,
+): Promise<LatestGoldReport | null> {
+  try {
+    return JSON.parse(
+      await readFile(path.join(dir, "runs", `${runId}.json`), "utf8"),
+    ) as LatestGoldReport;
+  } catch (error) {
+    if (isFilesystemPersistenceError(error)) return null;
+    throw error;
+  }
+}
+
+async function loadGoldEvalRunFromDatabase(runId: string): Promise<LatestGoldReport | null> {
+  try {
+    const record = await prisma.reportExport.findFirst({
+      where: { format: goldEvalRunFormat(runId) },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return record ? (JSON.parse(record.content) as LatestGoldReport) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadGoldEvalRunById(
+  runId: string,
+  reportsDir?: string,
+): Promise<LatestGoldReport | null> {
+  const dir = reportsDir ?? resolveReportsDir();
+  const loaders = process.env.VERCEL
+    ? [
+        () => loadGoldEvalRunFromDatabase(runId),
+        () => loadGoldEvalRunFromFilesystem(dir, runId),
+      ]
+    : [
+        () => loadGoldEvalRunFromFilesystem(dir, runId),
+        () => loadGoldEvalRunFromDatabase(runId),
+      ];
 
   for (const loader of loaders) {
     const report = await loader();

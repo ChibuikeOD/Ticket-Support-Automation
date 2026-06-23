@@ -101,8 +101,8 @@ export default async function OverviewPage() {
               </span>
             </div>
             <div className="rounded-xl bg-surface-container-high/55 px-4 py-3 md:col-span-2">
-              <Link href="/evaluation" className="font-semibold text-primary hover:underline">
-                View full case breakdown on the Evaluation tab
+              <Link href={latest.runId ? `/reports/${latest.runId}` : "/reports"} className="font-semibold text-primary hover:underline">
+                View full report and export markdown
               </Link>
             </div>
           </div>

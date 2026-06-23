@@ -8,7 +8,7 @@ import { BarChart3, Bot, LayoutDashboard, Play, Settings, TestTube2 } from "luci
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/evaluation", label: "Evaluation", icon: TestTube2 },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/reports", label: "Run Reports", icon: BarChart3 },
   { href: "/policies", label: "Settings", icon: Settings },
 ];
 

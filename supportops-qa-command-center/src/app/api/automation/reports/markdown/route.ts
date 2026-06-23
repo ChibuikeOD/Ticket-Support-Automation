@@ -27,7 +27,7 @@ export async function GET() {
   await prisma.reportExport.create({
     data: {
       runId: latestRun?.id,
-      format: "markdown",
+      format: "automation-markdown",
       content: report,
     },
   });
@@ -35,7 +35,7 @@ export async function GET() {
   return new NextResponse(report, {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="supportops-qa-report.md"',
+      "Content-Disposition": 'attachment; filename="automation-qa-report.md"',
     },
   });
 }
