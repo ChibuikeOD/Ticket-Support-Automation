@@ -5,21 +5,25 @@ export default async function PoliciesPage() {
   const rules = await prisma.policyRule.findMany({ orderBy: { createdAt: "desc" } });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Policy / SOP Studio</h1>
-        <p className="mt-1 text-sm text-slate-600">Policies guide the prompt and deterministic guardrails.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-5xl">Policy / SOP Studio</h1>
+        <p className="mt-3 max-w-2xl text-lg text-on-surface-variant">
+          Policies guide the prompt and deterministic guardrails.
+        </p>
       </div>
       <PolicyEditor />
       <div className="grid gap-3">
         {rules.map((rule) => (
-          <section key={rule.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <section key={rule.id} className="glass-panel rounded-2xl p-5">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">{rule.name}</h2>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{rule.severity}</span>
+              <h2 className="font-semibold text-foreground">{rule.name}</h2>
+              <span className="echo-label rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary">
+                {rule.severity}
+              </span>
             </div>
-            <div className="mt-1 text-sm text-slate-500">{rule.category}</div>
-            <p className="mt-3 text-sm text-slate-700">{rule.ruleText}</p>
+            <div className="echo-label mt-2 text-outline">{rule.category}</div>
+            <p className="mt-3 text-sm leading-6 text-on-surface-variant">{rule.ruleText}</p>
           </section>
         ))}
       </div>

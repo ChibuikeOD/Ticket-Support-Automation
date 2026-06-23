@@ -21,22 +21,22 @@ export function PolicyEditor() {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="text-base font-semibold">Add policy rule</h2>
+    <div className="glass-panel space-y-4 rounded-2xl p-5">
+      <h2 className="text-xl font-bold text-foreground">Add policy rule</h2>
       <input
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        className="echo-input w-full rounded-xl px-3 py-2 text-sm"
         placeholder="Policy name"
         value={name}
         onChange={(event) => setName(event.target.value)}
       />
       <input
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        className="echo-input w-full rounded-xl px-3 py-2 text-sm"
         placeholder="Category"
         value={category}
         onChange={(event) => setCategory(event.target.value)}
       />
       <select
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        className="echo-input w-full rounded-xl px-3 py-2 text-sm"
         value={severity}
         onChange={(event) => setSeverity(event.target.value)}
       >
@@ -45,15 +45,15 @@ export function PolicyEditor() {
         <option value="high">High</option>
       </select>
       <textarea
-        className="min-h-28 w-full rounded-md border border-slate-300 p-3 text-sm"
+        className="echo-input min-h-28 w-full rounded-xl p-3 text-sm"
         placeholder="Policy text"
         value={ruleText}
         onChange={(event) => setRuleText(event.target.value)}
       />
-      <button className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white" onClick={save}>
+      <button className="echo-gradient-button rounded-xl px-5 py-3 text-sm font-bold" onClick={save}>
         Save policy
       </button>
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {message ? <p className="text-sm text-on-surface-variant">{message}</p> : null}
     </div>
   );
 }
