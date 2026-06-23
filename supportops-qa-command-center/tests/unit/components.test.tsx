@@ -14,6 +14,7 @@ describe("shared UI components", () => {
 
     expect(screen.getByText("SupportOps QA")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Dashboard" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "Evaluation" }).getAttribute("href")).toBe("/evaluation");
     expect(screen.queryByRole("link", { name: "Backlog" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Dashboard content" })).toBeTruthy();
   });

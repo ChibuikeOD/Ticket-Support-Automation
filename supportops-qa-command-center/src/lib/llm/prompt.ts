@@ -7,12 +7,19 @@ interface PromptTicket {
   channel: string | null;
 }
 
-export function buildSupportAnalysisPrompt(ticket: PromptTicket, policies: string[]): string {
+export const DEFAULT_PROMPT_INSTRUCTIONS =
+  "You are an AI support operations assistant.\n" +
+  "Analyze the customer support ticket and return only valid JSON.\n" +
+  "Do not include Markdown fences.\n" +
+  "Be conservative. Recommend human_review or escalate for billing, refunds, account access, privacy, security, outages, angry customers, missing facts, or unsafe actions.";
+
+export function buildSupportAnalysisPrompt(
+  ticket: PromptTicket,
+  policies: string[],
+  promptInstructions = DEFAULT_PROMPT_INSTRUCTIONS,
+): string {
   return [
-    "You are an AI support operations assistant.",
-    "Analyze the customer support ticket and return only valid JSON.",
-    "Do not include Markdown fences.",
-    "Be conservative. Recommend human_review or escalate for billing, refunds, account access, privacy, security, outages, angry customers, missing facts, or unsafe actions.",
+    promptInstructions.trim(),
     "",
     "Required JSON shape:",
     JSON.stringify(

@@ -5,6 +5,7 @@ interface AnalyzeTicketOptions {
   apiKey: string | undefined;
   baseUrl: string;
   model: string;
+  promptInstructions?: string;
   ticket: {
     id: string;
     description: string;
@@ -40,7 +41,7 @@ export async function analyzeTicketWithDeepSeek(options: AnalyzeTicketOptions) {
       messages: [
         {
           role: "user",
-          content: buildSupportAnalysisPrompt(options.ticket, options.policies),
+          content: buildSupportAnalysisPrompt(options.ticket, options.policies, options.promptInstructions),
         },
       ],
       temperature: 0.2,

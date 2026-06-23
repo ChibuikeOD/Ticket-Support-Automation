@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { BarChart3, Bot, LayoutDashboard, Play, Settings } from "lucide-react";
+import { BarChart3, Bot, LayoutDashboard, Play, Settings, TestTube2 } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/evaluation", label: "Evaluation", icon: TestTube2 },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/policies", label: "Settings", icon: Settings },
 ];
@@ -55,11 +56,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="space-y-4 border-t border-outline-variant/20 px-1 pt-4">
           <Link
-            href="/"
+            href="/evaluation"
             className="echo-gradient-button flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold"
           >
             <Play className="h-4 w-4 fill-current" />
-            Run Sample
+            Run Evaluation
           </Link>
         </div>
       </aside>
